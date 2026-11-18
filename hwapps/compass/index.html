@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Compass</title>
+		<link rel="stylesheet" href="_zd/sdk.css" />
+		<link rel="stylesheet" href="app.css" />
+		<script src="_zd/sdk.js"></script>
+		<script src="app.js" defer></script>
+	</head>
+	<body>
+		<div class="window">
+			<header class="zd-toolbar" data-zd-drag>
+				<span class="zd-title" data-i18n="title">Compass</span>
+				<span class="zd-spacer"></span>
+				<div class="zd-capsule">
+					<button id="calibrate" data-i18n-title="calibrate"><i class="zd-glyph">scope</i></button>
+					<button id="inspector" aria-pressed="false" data-i18n-title="sensors"><i class="zd-glyph">sidebar_right</i></button>
+				</div>
+			</header>
+			<div class="body">
+				<main>
+					<div class="dial-wrap">
+						<svg class="dial" id="dial" viewBox="-160 -160 320 320" aria-hidden="true">
+							<g id="rose"></g>
+							<line class="index" x1="0" y1="-158" x2="0" y2="-126" />
+							<g class="level">
+								<line x1="-26" y1="0" x2="26" y2="0" />
+								<line x1="0" y1="-26" x2="0" y2="26" />
+								<circle id="bubble" class="bubble" r="15" cx="0" cy="0" />
+							</g>
+						</svg>
+					</div>
+					<div class="readout">
+						<div class="heading"><b id="deg">–</b><span id="dir"></span></div>
+						<div class="tilt">
+							<span><span class="label" data-i18n="pitch">Pitch</span> <b id="pitch">–</b></span>
+							<span><span class="label" data-i18n="roll">Roll</span> <b id="roll">–</b></span>
+						</div>
+						<div class="notice" id="notice" hidden>
+							<span id="notice-text"></span>
+							<button class="zd-button small" id="notice-btn" data-i18n="calibrate">Calibrate</button>
+						</div>
+					</div>
+				</main>
+				<aside class="inspector" id="panel" hidden>
+					<section>
+						<h4 class="zd-section-title" data-i18n="accel">Accelerometer</h4>
+						<div class="zd-card" data-vec="accel" data-unit="m/s²"></div>
+					</section>
+					<section>
+						<h4 class="zd-section-title" data-i18n="gyro">Gyroscope</h4>
+						<div class="zd-card" data-vec="gyro" data-unit="°/s"></div>
+					</section>
+					<section>
+						<h4 class="zd-section-title" data-i18n="mag">Magnetometer</h4>
+						<div class="zd-card" data-vec="mag" data-unit="µT"></div>
+					</section>
+					<section>
+						<div class="zd-card">
+							<div class="zd-row"><span data-i18n="calibration">Calibration</span><span class="zd-value" id="cal-state">–</span></div>
+						</div>
+					</section>
+				</aside>
+			</div>
+		</div>
+		<div class="zd-sheet-backdrop" id="sheet" hidden>
+			<div class="zd-sheet" role="dialog">
+				<svg class="ring" viewBox="0 0 64 64" aria-hidden="true">
+					<circle cx="32" cy="32" r="27" class="track" />
+					<circle cx="32" cy="32" r="27" class="fill" id="ring" pathLength="100" />
+					<text x="32" y="37" text-anchor="middle" id="pct">0%</text>
+				</svg>
+				<h3 id="sheet-title" data-i18n="calTitle">Calibrate Compass</h3>
+				<p id="sheet-text"></p>
+				<div class="zd-buttons">
+					<button class="zd-button" id="sheet-cancel" data-i18n="cancel">Cancel</button>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

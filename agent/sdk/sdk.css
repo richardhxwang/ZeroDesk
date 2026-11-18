@@ -74,3 +74,367 @@ textarea,
 *::-webkit-scrollbar {
 	display: none;
 }
+
+/* ---- Shared controls (opt-in classes, used by the bundled hardware apps) ---- */
+
+:root {
+	--zd-toolbar-bg: hsla(0, 0%, 98.5%, 0.86);
+	--zd-sheet-bg: hsl(0, 0%, 99%);
+	--zd-spring: cubic-bezier(0.32, 1.26, 0.5, 1);
+	--zd-glass: hsla(0, 0%, 100%, 0.72);
+	--zd-glass-shadow: 0 0 0 0.5px hsla(0, 0%, 0%, 0.08), 0 2px 10px hsla(0, 0%, 0%, 0.08);
+}
+
+:root[data-theme='dark'] {
+	--zd-toolbar-bg: hsla(0, 0%, 15%, 0.86);
+	--zd-sheet-bg: hsl(0, 0%, 17%);
+	--zd-glass: hsla(0, 0%, 26%, 0.72);
+	--zd-glass-shadow: 0 0 0 0.5px hsla(0, 0%, 100%, 0.1), 0 2px 10px hsla(0, 0%, 0%, 0.3);
+}
+
+/* framework7-icons (MIT): <i class="zd-glyph">gear_alt</i> */
+@font-face {
+	font-family: 'Framework7 Icons';
+	font-style: normal;
+	font-weight: 400;
+	font-display: block;
+	src: url('f7-icons.woff2') format('woff2');
+}
+
+.zd-glyph {
+	flex: none;
+	display: inline-block;
+	width: 1em;
+	height: 1em;
+	font-family: 'Framework7 Icons';
+	font-size: 16px;
+	font-style: normal;
+	font-weight: normal;
+	line-height: 1;
+	letter-spacing: normal;
+	text-align: center;
+	text-transform: none;
+	white-space: nowrap;
+	direction: ltr;
+	font-feature-settings: 'liga';
+	-webkit-font-smoothing: antialiased;
+}
+
+button {
+	font: inherit;
+	color: inherit;
+}
+
+/* unified title bar for "titlebar": "app" windows */
+.zd-toolbar {
+	position: relative;
+	z-index: 5;
+	height: var(--zd-inset-top);
+	flex: none;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 0 12px 0 var(--zd-inset-left);
+}
+
+.zd-toolbar.bordered {
+	background: var(--zd-toolbar-bg);
+	box-shadow: 0 0.5px 0 var(--zd-hairline-strong);
+	backdrop-filter: blur(30px) saturate(1.6);
+}
+
+.zd-title {
+	min-width: 0;
+	font-size: 15px;
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.zd-subtitle {
+	font-size: 11px;
+	font-weight: 400;
+	color: var(--zd-text-secondary);
+}
+
+.zd-spacer {
+	flex: 1;
+}
+
+/* glass capsule holding toolbar buttons */
+.zd-capsule {
+	flex: none;
+	display: inline-flex;
+	align-items: center;
+	height: 36px;
+	padding: 0 4px;
+	border-radius: 18px;
+	background: var(--zd-glass);
+	box-shadow: var(--zd-glass-shadow);
+	backdrop-filter: blur(20px) saturate(1.6);
+}
+
+.zd-capsule > button,
+.zd-tool {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	height: 28px;
+	min-width: 32px;
+	padding: 0 8px;
+	border: 0;
+	border-radius: 14px;
+	background: none;
+	color: var(--zd-text);
+	font-size: 13px;
+	font-weight: 500;
+	white-space: nowrap;
+	transition:
+		background-color 120ms ease,
+		transform 260ms var(--zd-spring);
+}
+
+.zd-capsule > button:hover:not(:disabled),
+.zd-tool:hover:not(:disabled) {
+	background: var(--zd-hover);
+}
+
+.zd-capsule > button:active:not(:disabled),
+.zd-tool:active:not(:disabled) {
+	transform: scale(0.94);
+}
+
+.zd-capsule > button[aria-pressed='true'],
+.zd-tool[aria-pressed='true'] {
+	background: var(--zd-selected);
+}
+
+.zd-capsule > button:disabled,
+.zd-tool:disabled {
+	opacity: 0.35;
+}
+
+/* push buttons */
+.zd-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	height: 28px;
+	padding: 0 14px;
+	border: 0;
+	border-radius: var(--zd-radius-control);
+	background: var(--zd-control-bg);
+	box-shadow: var(--zd-control-shadow);
+	color: var(--zd-text);
+	font-size: 13px;
+	font-weight: 500;
+	white-space: nowrap;
+	transition: transform 200ms var(--zd-spring);
+}
+
+.zd-button:active:not(:disabled) {
+	transform: scale(0.97);
+}
+
+.zd-button:disabled {
+	opacity: 0.45;
+}
+
+.zd-button.primary {
+	background: var(--zd-accent);
+	color: var(--zd-accent-contrast);
+	box-shadow: none;
+}
+
+.zd-button.destructive {
+	background: var(--zd-red);
+	color: #fff;
+	box-shadow: none;
+}
+
+.zd-button.small {
+	height: 24px;
+	padding: 0 10px;
+	font-size: 12px;
+}
+
+/* segmented control: <div class="zd-segmented"><button aria-pressed="true">…</button>…</div> */
+.zd-segmented {
+	display: inline-flex;
+	padding: 2px;
+	gap: 0;
+	border-radius: 8px;
+	background: var(--zd-hover);
+	box-shadow: inset 0 0 0 0.5px var(--zd-hairline);
+}
+
+.zd-segmented > button {
+	height: 22px;
+	padding: 0 11px;
+	border: 0;
+	border-radius: 6px;
+	background: none;
+	color: var(--zd-text-secondary);
+	font-size: 12px;
+	font-weight: 500;
+	white-space: nowrap;
+	transition:
+		background-color 180ms ease,
+		color 180ms ease;
+}
+
+.zd-segmented > button[aria-pressed='true'] {
+	background: var(--zd-control-bg);
+	box-shadow: var(--zd-control-shadow);
+	color: var(--zd-text);
+}
+
+/* text field */
+.zd-field {
+	box-sizing: border-box;
+	height: 28px;
+	min-width: 0;
+	padding: 0 10px;
+	border: 0;
+	border-radius: var(--zd-radius-control);
+	background: var(--zd-control-bg);
+	box-shadow: var(--zd-control-shadow);
+	color: var(--zd-text);
+	font: inherit;
+	outline: none;
+}
+
+.zd-field:focus {
+	box-shadow:
+		var(--zd-control-shadow),
+		0 0 0 3px var(--zd-selected);
+}
+
+.zd-field::placeholder {
+	color: var(--zd-text-tertiary);
+}
+
+/* grouped content (System Settings) */
+.zd-section-title {
+	margin: 0 0 6px 2px;
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.zd-card {
+	border-radius: 12px;
+	background: var(--zd-card);
+	box-shadow: inset 0 0 0 0.5px var(--zd-hairline);
+}
+
+.zd-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 40px;
+	padding: 0 14px;
+	box-sizing: border-box;
+}
+
+.zd-row + .zd-row {
+	box-shadow: inset 0 0.5px 0 var(--zd-hairline);
+}
+
+.zd-row .zd-value {
+	margin-left: auto;
+	color: var(--zd-text-secondary);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+/* sheet dropping from the title bar: <div class="zd-sheet-backdrop"><div class="zd-sheet">…</div></div> */
+.zd-sheet-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 40;
+	display: flex;
+	justify-content: center;
+	background: hsla(0, 0%, 0%, 0.08);
+	animation: zd-fade 160ms ease;
+}
+
+.zd-sheet {
+	margin-top: var(--zd-inset-top);
+	box-sizing: border-box;
+	width: min(320px, calc(100vw - 32px));
+	height: max-content;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	padding: 20px 20px 16px;
+	border-radius: 0 0 14px 14px;
+	background: var(--zd-sheet-bg);
+	box-shadow: 0 12px 40px hsla(0, 0%, 0%, 0.25);
+	text-align: center;
+	animation: zd-sheet-down 340ms var(--zd-spring);
+}
+
+.zd-sheet h3 {
+	margin: 0;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.zd-sheet p {
+	margin: 0;
+	font-size: 12px;
+	color: var(--zd-text-secondary);
+}
+
+.zd-sheet .zd-buttons {
+	margin-top: 12px;
+	width: 100%;
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: 1fr;
+	gap: 8px;
+}
+
+/* empty state: big line glyph + title in secondary grey */
+.zd-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	color: var(--zd-text-tertiary);
+	text-align: center;
+}
+
+.zd-empty .zd-glyph {
+	font-size: 64px;
+}
+
+.zd-empty h2 {
+	margin: 0;
+	font-size: 20px;
+	font-weight: 700;
+	color: var(--zd-text-secondary);
+}
+
+.zd-empty p {
+	margin: 0;
+	font-size: 12px;
+}
+
+@keyframes zd-fade {
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes zd-sheet-down {
+	from {
+		transform: translateY(-100%);
+	}
+}

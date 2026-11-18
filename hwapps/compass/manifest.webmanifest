@@ -1,0 +1,15 @@
+{
+  "name": "Compass",
+  "short_name": "Compass",
+  "description": "Heading, level and motion sensors",
+  "start_url": "index.html",
+  "categories": ["Hardware & IoT"],
+  "icons": [{ "src": "icon-light.webp", "sizes": "512x512", "type": "image/webp" }],
+  "zerodesk": {
+    "spec": 1,
+    "icons_dark": [{ "src": "icon-dark.webp", "sizes": "512x512", "type": "image/webp" }],
+    "window": { "width": 640, "height": 520, "min_width": 340, "min_height": 440, "resizable": true, "titlebar": "app" },
+    "permissions": [],
+    "backend": { "exec": ["zerodesk", "hw", "compass"], "memory_max": "24M", "exclusive": false }
+  }
+}

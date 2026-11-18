@@ -120,8 +120,35 @@
 		});
 	}
 
+	// zd.localize({ en: {...}, zh: {...} }): fills [data-i18n] text and
+	// [data-i18n-title] tooltips, again on every language change; returns t(key).
+	function localize(strings) {
+		function t(key) {
+			var table = strings[state.lang] || strings.en || {};
+			return key in table ? table[key] : (strings.en || {})[key] || key;
+		}
+		function apply() {
+			document.documentElement.lang = state.lang;
+			document.querySelectorAll('[data-i18n]').forEach(function (el) {
+				el.textContent = t(el.dataset.i18n);
+			});
+			document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
+				el.title = t(el.dataset.i18nTitle);
+				el.setAttribute('aria-label', el.title);
+			});
+			document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
+				el.placeholder = t(el.dataset.i18nPlaceholder);
+			});
+		}
+		apply();
+		ready.then(apply);
+		(listeners.lang = listeners.lang || []).push(apply);
+		return t;
+	}
+
 	window.zd = {
 		version: 1,
+		localize: localize,
 		ready: ready,
 		get app() {
 			return state.app;

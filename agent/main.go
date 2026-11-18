@@ -59,6 +59,10 @@ func main() {
 	if filepath.Base(os.Args[0]) == "zerodesk-screen" || flag.Arg(0) == "screen" {
 		os.Exit(runDeviceScreen(*fbPath, strings.ToLower(*kbdName)))
 	}
+	// backends of the bundled hardware apps: `zerodesk hw <app>` (hw.go)
+	if flag.Arg(0) == "hw" {
+		os.Exit(runHW(flag.Args()[1:]))
+	}
 
 	token := ""
 	if !*noAuth {

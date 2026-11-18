@@ -112,6 +112,21 @@ func userWebAppsDir() string {
 	return filepath.Join(home, ".local", "share", "zerodesk", "apps")
 }
 
+// bundledWebAppsDir holds the apps that ship with ZeroDesk itself (the
+// hardware apps): <prefix>/share/zerodesk/apps next to <prefix>/bin/zerodesk,
+// so /usr/share/zerodesk/apps for the package and the per-user directory for
+// a development install in ~/.local/bin.
+func bundledWebAppsDir() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	if real, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = real
+	}
+	return filepath.Join(filepath.Dir(filepath.Dir(exe)), "share", "zerodesk", "apps")
+}
+
 // webDirAllowed resolves symlinks and checks the directory is in an allowed root.
 func webDirAllowed(dir string) (string, bool) {
 	real, err := filepath.EvalSymlinks(dir)
@@ -175,8 +190,16 @@ func loadWebApp(id, dir, deviceApp string) (*webApp, error) {
 		}
 	}
 	if b := m.ZeroDesk.Backend; b != nil && len(b.Exec) > 0 {
-		// absolute, or relative to the web directory (and inside it)
-		if !filepath.IsAbs(b.Exec[0]) {
+		// "zerodesk" is ZeroDesk's own executable (the backends of the bundled
+		// hardware apps are `zerodesk hw <app>`); otherwise absolute, or
+		// relative to the web directory (and inside it)
+		if b.Exec[0] == "zerodesk" {
+			if exe, err := os.Executable(); err == nil {
+				b.Exec[0] = exe
+			} else {
+				b.Exec = nil
+			}
+		} else if !filepath.IsAbs(b.Exec[0]) {
 			if p, ok := webFile(real, b.Exec[0]); ok {
 				b.Exec[0] = p
 			} else {
@@ -203,12 +226,18 @@ func clampInt(v, lo, hi, def int) int {
 }
 
 // loadWebApps finds every web app: X-ZeroDesk-Web in the launcher's .desktop
-// files first, then ~/.local/share/zerodesk/apps/<id>/.
+// files first, then the apps bundled with ZeroDesk, then
+// ~/.local/share/zerodesk/apps/<id>/. A bundled or per-user app whose id is an
+// installed launcher app replaces that app's virtual screen.
 func loadWebApps() []*webApp {
 	byID := map[string]*webApp{}
+	installed := map[string]string{} // launcher app id -> name
 	files, _ := filepath.Glob(filepath.Join(appLaunchDir, "applications", "*.desktop"))
 	for _, f := range files {
 		d, ok := parseDesktop(f)
+		if ok {
+			installed[d.ID] = d.Name
+		}
 		if !ok || d.WebDir == "" || !webAppIDRe.MatchString(d.ID) {
 			continue
 		}
@@ -222,20 +251,29 @@ func loadWebApps() []*webApp {
 		}
 		byID[a.ID] = a
 	}
-	dirs, _ := os.ReadDir(userWebAppsDir())
-	for _, e := range dirs {
-		id := e.Name()
-		if !webAppIDRe.MatchString(id) || byID[id] != nil {
+	for _, root := range []string{bundledWebAppsDir(), userWebAppsDir()} {
+		if root == "" {
 			continue
 		}
-		a, err := loadWebApp(id, filepath.Join(userWebAppsDir(), id), "")
-		if err != nil {
-			if !errors.Is(err, os.ErrNotExist) {
-				log.Printf("webapp %v", err)
+		dirs, _ := os.ReadDir(root)
+		for _, e := range dirs {
+			id := e.Name()
+			if !webAppIDRe.MatchString(id) || byID[id] != nil {
+				continue
 			}
-			continue
+			device := ""
+			if _, ok := installed[id]; ok {
+				device = id
+			}
+			a, err := loadWebApp(id, filepath.Join(root, id), device)
+			if err != nil {
+				if !errors.Is(err, os.ErrNotExist) {
+					log.Printf("webapp %v", err)
+				}
+				continue
+			}
+			byID[id] = a
 		}
-		byID[id] = a
 	}
 	out := make([]*webApp, 0, len(byID))
 	for _, a := range byID {
@@ -531,11 +569,15 @@ func (wa *webApps) handleCap(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.HasPrefix(rest, "_zd/"):
 		name := strings.TrimPrefix(rest, "_zd/")
-		if name != "sdk.js" && name != "sdk.css" {
+		switch name {
+		case "sdk.js", "sdk.css":
+			h.Set("Cache-Control", "no-cache")
+		case "f7-icons.woff2": // framework7-icons, MIT (THIRD_PARTY_NOTICES.md)
+			h.Set("Cache-Control", "max-age=86400")
+		default:
 			http.NotFound(w, r)
 			return
 		}
-		h.Set("Cache-Control", "no-cache")
 		http.ServeFileFS(w, r, sdkFS, "sdk/"+name)
 	case rest == "api" || strings.HasPrefix(rest, "api/"):
 		if !a.Backend {
