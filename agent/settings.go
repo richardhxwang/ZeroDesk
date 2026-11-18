@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -108,15 +109,21 @@ func brightnessPercent(cfg map[string]any) (pct int, screenOn bool) {
 }
 
 func soundState() (vol int, muted bool) {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if out, err := run(3*time.Second, "pactl", "get-sink-mute", "@DEFAULT_SINK@"); err == nil {
+			muted = strings.Contains(out, "yes")
+		}
+	}()
 	if out, err := run(3*time.Second, "pactl", "get-sink-volume", "@DEFAULT_SINK@"); err == nil {
 		if i := strings.Index(out, "%"); i > 0 {
 			j := strings.LastIndexAny(out[:i], " /") + 1
 			vol, _ = strconv.Atoi(strings.TrimSpace(out[j:i]))
 		}
 	}
-	if out, err := run(3*time.Second, "pactl", "get-sink-mute", "@DEFAULT_SINK@"); err == nil {
-		muted = strings.Contains(out, "yes")
-	}
+	wg.Wait()
 	return
 }
 
@@ -140,12 +147,26 @@ func netDevices() []netDevice {
 			continue
 		}
 		d := netDevice{Device: f[0], Type: f[1], State: f[2], Connection: f[3]}
-		if ip, err := run(3*time.Second, "nmcli", "-g", "IP4.ADDRESS", "device", "show", d.Device); err == nil {
-			d.IP = strings.Split(strings.Split(ip, "|")[0], "/")[0]
-		}
+		d.IP = ipv4Of(d.Device) // from the kernel: no nmcli call per device
+
 		list = append(list, d)
 	}
 	return list
+}
+
+// ipv4Of returns the interface's first IPv4 address.
+func ipv4Of(name string) string {
+	ifc, err := net.InterfaceByName(name)
+	if err != nil {
+		return ""
+	}
+	addrs, _ := ifc.Addrs()
+	for _, a := range addrs {
+		if ipn, ok := a.(*net.IPNet); ok && ipn.IP.To4() != nil {
+			return ipn.IP.String()
+		}
+	}
+	return ""
 }
 
 // splitNmcli splits one line of `nmcli -t` output on unescaped colons.

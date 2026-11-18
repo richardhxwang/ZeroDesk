@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { cached, revalidate } from '🍎/lib/swr.svelte.ts';
+	import { data } from '🍎/state/app_preload.ts';
 	import Glyph from '../common/Glyph.svelte';
 	import { onDestroy, onMount, tick } from 'svelte';
 	import WaveSurfer from 'wavesurfer.js';
@@ -21,7 +23,8 @@
 
 	type Status = { recording: boolean; paused?: boolean; elapsed?: number; levels?: number[]; path?: string; error?: string };
 
-	let items = $state<Track[]>([]);
+	// last known recordings paint at once; a refresh follows (lib/swr)
+	let items = $state<Track[]>([...(cached<Track[]>('recordings') ?? [])].sort((a, b) => b.modified - a.modified));
 	let selected = $state<string | null>(null);
 	// narrow window: the list becomes an overlay toggled from the toolbar (Voice Memos' sidebar button)
 	let memos_width = $state(800);
@@ -62,7 +65,7 @@
 	// ---- library ----
 
 	async function load() {
-		const list = await list_audio('~/Recordings', 1);
+		const list = [...((await revalidate('recordings', data.recordings)) as Track[])];
 		items = list.sort((a, b) => b.modified - a.modified);
 		if (!selected && items[0]) select(items[0]);
 	}
@@ -377,6 +380,7 @@
 	onMount(async () => {
 		built_dark = dark;
 		build();
+		if (!selected && items[0]) select(items[0]);
 		await refresh_status();
 		if (status.recording) poll = setInterval(refresh_status, 120);
 		await load();

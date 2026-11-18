@@ -108,15 +108,13 @@ Apps you install on the CardputerZero (from its App Store or as `.deb` files) ap
 
 ## Install
 
-ZeroDesk comes in two editions built from the same source:
+ZeroDesk comes in two editions built from the same source, with the same features:
 
 | | Store edition | GitHub edition |
 |---|---|---|
 | Where | CardputerZero Store | this repository's **Releases** page |
 | File | `zerodesk_<version>-<rev>_arm64.deb` | `zerodesk_<version>-<rev>+full_arm64.deb` |
-| All apps and features above | ✓ | ✓ |
-| Installing packages, removing apps, setting the clock by hand, ADB | asks for your password each time | asks for your password, or runs directly if your device allows `sudo` without one |
-| Opening device apps that the launcher runs as administrator (from ZeroDesk's Apps) | open them from the device's launcher | ✓ when `sudo` works without a password |
+| Features | all | all |
 
 **From the CardputerZero Store** (once ZeroDesk is listed there): open **Store** on the device, search for **ZeroDesk** or its share code **ZDSK**, and install.
 
@@ -199,7 +197,7 @@ Can't press a key on the device right now? Choose **Use an access token** and en
 - **What is on the network:** ZeroDesk answers HTTP on ports 80 and 8686 of the CardputerZero. Every page and command except the login screen needs a signed-in browser.
 - **How signing in works:** a browser gets in only after someone presses OK on the device itself, or by entering the device's access token. The browser then keeps a session cookie that scripts cannot read and that is never sent to other sites. Log out to remove it.
 - **Encryption:** the connection is plain HTTP, like most devices on a home network. Use ZeroDesk on networks you trust.
-- **Privileges:** ZeroDesk runs as the device's normal user, never as root. Actions that need administrator rights ask for your password each time (GitHub edition: unless the device allows `sudo` without one); the password is used once and not stored.
+- **Privileges:** ZeroDesk runs as the device's normal user, never as root. Actions that need administrator rights ask for your password (unless the device allows `sudo` without one); the password is used once and not stored.
 - **Apps with their own windows** run in an isolated frame: they cannot read your session or call ZeroDesk's functions except through the permissions they declare.
 - **Your data stays on the device.** ZeroDesk sends nothing anywhere. The one outside request is the first use of Piano, when the device downloads the piano samples from a public sample library.
 

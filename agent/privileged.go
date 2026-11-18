@@ -17,8 +17,9 @@ import (
 // credential with `sudo -K` right away: this image uses a global sudo
 // timestamp, so leaving it would let any process use sudo for 15 minutes.
 //
-// The GitHub edition skips the password when the device allows sudo without
-// one; the Store edition always asks.
+// When the device allows sudo without a password, no password is asked: the
+// system Store's own prompt behaves the same way (cp0_sudo runs `sudo -S -v`,
+// which passes silently then). Both editions do this.
 
 var (
 	errNeedPassword  = errors.New("password required")
@@ -26,14 +27,11 @@ var (
 )
 
 func sudoWithoutPassword(ctx context.Context) bool {
-	if edition == "store" {
-		return false
-	}
 	return exec.CommandContext(ctx, "sudo", "-n", "true").Run() == nil
 }
 
 // withAdmin runs fn while `sudo -n` works: either because the device allows
-// it (GitHub edition) or because password was just verified.
+// it or because the password was just verified.
 func withAdmin(ctx context.Context, password string, fn func() error) error {
 	if sudoWithoutPassword(ctx) {
 		return fn()

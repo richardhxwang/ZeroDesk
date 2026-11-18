@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { cached, revalidate, store } from '🍎/lib/swr.svelte.ts';
+	import { data } from '🍎/state/app_preload.ts';
 	import { as_admin, Cancelled } from '🍎/state/admin.svelte.ts';
 	import 'framework7-icons/css/framework7-icons.css';
 	import { onDestroy, onMount, tick } from 'svelte';
@@ -45,7 +47,8 @@
 
 	let pane = $state<Pane>('wifi');
 	let query = $state('');
-	let s = $state<State | null>(null);
+	// last known state paints the window at once; a refresh follows (lib/swr)
+	let s = $state<State | null>(cached<State>('settings') ?? null);
 	let error = $state('');
 	let busy = $state<string | null>(null);
 
@@ -56,7 +59,7 @@
 
 	async function load() {
 		try {
-			s = await api<State>('/api/settings');
+			s = (await revalidate('settings', data.settings)) as State;
 			error = '';
 		} catch (e) {
 			error = (e as Error).message;
@@ -86,7 +89,7 @@
 	});
 
 	// ---- Wi-Fi ----
-	let nets = $state<Net[]>([]);
+	let nets = $state<Net[]>(cached<Net[]>('wifi') ?? []);
 	let scanning = $state(false);
 	let joining = $state<string | null>(null);
 	let pw_for = $state<string | null>(null);
@@ -97,7 +100,8 @@
 		if (!s?.wifi.enabled) return;
 		scanning = true;
 		try {
-			nets = await api<Net[]>(`/api/wifi/networks${rescan ? '?rescan=1' : ''}`);
+			nets = rescan ? await api<Net[]>('/api/wifi/networks?rescan=1') : ((await revalidate('wifi', data.wifi)) as Net[]);
+			if (rescan) store('wifi', nets);
 		} catch {
 			/* keep the last list */
 		}
@@ -227,7 +231,15 @@
 
 		<div class="content">
 			{#if !s}
-				<p class="loading">{error || '…'}</p>
+				<!-- first open without any data yet: the final layout, values blank -->
+				<div class="hero">
+					{@render tile(current.icon, current.tint, 44)}
+					<div class="hero-text"><b>{t(current.label)}</b></div>
+				</div>
+				<div class="card skeleton" aria-busy="true">
+					{#each [0, 1, 2, 3] as i (i)}<div class="row"></div>{/each}
+				</div>
+				{#if error}<p class="foot">{error}</p>{/if}
 			{:else if pane === 'wifi'}
 				<div class="hero">
 					{@render tile('wifi', '#0a84ff', 44)}
@@ -622,9 +634,8 @@
 		gap: 12px;
 	}
 
-	.loading {
-		margin: 40px auto;
-		color: var(--zd-text-tertiary);
+	.skeleton .row {
+		min-height: 44px;
 	}
 
 	.hero {

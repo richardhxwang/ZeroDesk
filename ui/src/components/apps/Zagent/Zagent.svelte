@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { cached, revalidate } from '🍎/lib/swr.svelte.ts';
+	import { data as preload } from '🍎/state/app_preload.ts';
 	import 'framework7-icons/css/framework7-icons.css';
 	import { onDestroy, onMount } from 'svelte';
 	import { api, post } from '🍎/lib/api.ts';
@@ -24,7 +26,8 @@
 		perm: { icon: 'checkmark_shield_fill', tint: '#8e8e93' },
 	};
 
-	let sections = $state<Section[] | null>(null);
+	// last known settings paint at once; a refresh follows (lib/swr)
+	let sections = $state<Section[] | null>(cached<{ sections: Section[] }>('zagent')?.sections ?? null);
 	// Follow the device language so row labels and buttons never mix.
 	let lang = $state('');
 	const L = (en: string, zh: string) => (lang === 'zh' ? zh : en);
@@ -44,7 +47,7 @@
 
 	async function load() {
 		try {
-			const data = await api<{ lang: string; sections: Section[] }>('/api/zagent/settings');
+			const data = (await revalidate('zagent', preload.zagent)) as { lang: string; sections: Section[] };
 			lang = data.lang;
 			sections = data.sections;
 			error = '';
@@ -127,7 +130,11 @@
 
 		<div class="content">
 			{#if !sections}
-				<p class="loading">{error || '…'}</p>
+				<!-- first open without any data yet: the final layout, values blank -->
+				<div class="card skeleton" aria-busy="true">
+					{#each [0, 1, 2, 3, 4] as i (i)}<div class="row"></div>{/each}
+				</div>
+				{#if error}<p class="loading">{error}</p>{/if}
 			{:else if current}
 				<div class="card">
 					{#each current.rows as row (row.key)}
@@ -802,5 +809,9 @@
 			width: auto;
 			min-width: 0;
 		}
+	}
+
+	.skeleton .row {
+		min-height: 44px;
 	}
 </style>

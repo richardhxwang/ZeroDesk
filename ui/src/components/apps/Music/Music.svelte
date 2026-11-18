@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { cached, revalidate } from '🍎/lib/swr.svelte.ts';
+	import { data } from '🍎/state/app_preload.ts';
 	import { icon_url } from '🍎/lib/icons.svelte.ts';
 	import Glyph from '../common/Glyph.svelte';
 	import { onDestroy, tick } from 'svelte';
@@ -12,8 +14,9 @@
 	// glass capsule at the bottom of the content. Audio streams from the Zero's
 	// ~/Music and plays on the computer.
 
-	let tracks = $state<Track[]>([]);
-	let loading = $state(true);
+	// last known library paints at once; a refresh follows (lib/swr)
+	let tracks = $state<Track[]>(cached<Track[]>('music') ?? []);
+	let loading = $state(!tracks.length);
 	let view = $state<'songs' | 'recent'>('songs');
 	let query = $state('');
 	let selected = $state<string | null>(null);
@@ -43,7 +46,7 @@
 	async function load() {
 		loading = !tracks.length;
 		try {
-			tracks = await list_audio('~/Music');
+			tracks = (await revalidate('music', data.music)) as Track[];
 		} finally {
 			loading = false;
 		}

@@ -2,6 +2,6 @@
 
 package main
 
-// The CardputerZero Store edition: never runs anything as root on its own.
-// Privileged actions ask the user for their password, like the system Store.
+// The CardputerZero Store edition. It behaves like the GitHub edition; the
+// tag stays so a Store-only difference can be added if the Store requires one.
 const edition = "store"

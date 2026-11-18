@@ -46,15 +46,23 @@ cd ../agent && GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags
 
 ## Editions
 
-One codebase, two Debian packages, same package name `zerodesk` and the same Store-compliant layout:
+One codebase, two Debian packages, same package name `zerodesk` and the same Store-compliant layout. The goal is no difference in features; every row below that differs is a bug to remove.
 
 | | Store edition | GitHub edition |
 |---|---|---|
 | Built with | `go build -tags store` (`agent/edition_store.go`) | default build (`agent/edition.go`) |
 | File | `zerodesk_<version>-<rev>_arm64.deb` | `zerodesk_<version>-<rev>+full_arm64.deb` |
 | Distributed | CardputerZero Store | GitHub Releases |
-| Administrator actions | always ask for the user's password | run directly when the device allows `sudo` without a password, otherwise ask |
-| Apps whose launcher entry runs them through `sudo` | not started by ZeroDesk (open them from the launcher) | started when `sudo` works without a password |
+| Features | all | all |
+| Administrator actions (install/remove packages, set the clock, ADB) | password prompt; none when `sudo` works without one | same |
+| Launcher entries that start through `sudo` (virtual screen, Open on Zero) | started with the app's own sudo rule | same |
+
+Earlier Store-only restrictions and how they were lifted:
+
+| Restriction (removed) | Why it was lifted |
+|---|---|
+| Store edition always asked for the password | The system Store's own prompt (`cp0_sudo`) runs `sudo -S -v`, which passes without a password when `sudo` allows it; ZeroDesk now does the same in both editions |
+| Store edition refused to start launcher entries whose `Exec` begins with `sudo` (the original NFC, SubG Chat, LoRa GPS apps) | Their root rights come from the app's own package (`/etc/sudoers.d/m5cardputerzero-cap-*`), exactly as when the launcher starts them; ZeroDesk holds no rights of its own |
 
 `/api/session` reports the edition (`edition: "store" | "full"`).
 
@@ -69,9 +77,9 @@ ZeroDesk runs as the system service `zerodesk.service` with `User=pi` (Store pol
 | `systemctl reboot` | unchanged | polkit allows members of `sudo` (factory-test rules) |
 | `sudo kill` of a root foreground app | hold ESC (key injection) | the launcher's own force-quit ends the app with the launcher's rights |
 | `sudo dpkg -i`, `sudo apt-get remove`, `sudo date`/`hwclock`, `sudo cardputer-adb` | user enters their password; `sudo -S -v`, the fixed command with `sudo -n`, then `sudo -K` (`agent/privileged.go`) | the same model as the system Store's `cp0_sudo` password prompt; ZeroDesk holds no rights of its own and keeps no password |
-| starting `sudo …` launcher entries (virtual screen, Open on Zero) | refused in the Store edition | ZeroDesk would start a root process |
+| starting `sudo …` launcher entries (virtual screen, Open on Zero) | started as the launcher does, with the app's own sudo rule | the rights belong to the app's package, not to ZeroDesk |
 
-Nothing is left out of the Store edition yet. Planned native apps for the NFC, SubG and GPS caps need hardware access the original apps get through `sudo`; the GitHub edition will ship narrowly scoped sudo rules for them, the Store edition will use group permissions where they suffice.
+Nothing is left out of the Store edition. The hardware apps are being built on branch `feat/hardware-apps` (docs/HARDWARE-APPS.md); any edition difference they need will be listed in the table above.
 
 ## Launcher entry
 

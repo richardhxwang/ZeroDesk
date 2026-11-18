@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 )
@@ -42,16 +44,59 @@ type zagentError struct{ msg string }
 
 func (e *zagentError) Error() string { return e.msg }
 
-// GET /api/zagent/settings -> {"lang":..,"sections":[{id,title,rows:[...]}]}
-func handleZagentSettings(w http.ResponseWriter, _ *http.Request) {
+// zagent-settings takes seconds per call, so the last answer is kept and
+// served at once (a window's first paint), then refreshed in the background.
+var zagentCache struct {
+	sync.Mutex
+	out        string
+	at         time.Time
+	refreshing bool
+}
+
+func zagentFetch() (string, error) {
 	out, err := runZagent(45*time.Second, "json")
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
-		return
+		return "", err
 	}
 	if !json.Valid([]byte(out)) {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "zagent-settings returned invalid JSON"})
-		return
+		return "", &zagentError{"zagent-settings returned invalid JSON"}
+	}
+	zagentCache.Lock()
+	zagentCache.out, zagentCache.at = out, time.Now()
+	zagentCache.Unlock()
+	return out, nil
+}
+
+// zagentWarm fills the cache at start-up when the tool is installed.
+func zagentWarm() {
+	if _, err := os.Stat(zagentSettingsTool); err == nil {
+		_, _ = zagentFetch()
+	}
+}
+
+// GET /api/zagent/settings -> {"lang":..,"sections":[{id,title,rows:[...]}]}
+func handleZagentSettings(w http.ResponseWriter, _ *http.Request) {
+	zagentCache.Lock()
+	out, at := zagentCache.out, zagentCache.at
+	stale := out != "" && time.Since(at) > 5*time.Second && !zagentCache.refreshing
+	if stale {
+		zagentCache.refreshing = true
+	}
+	zagentCache.Unlock()
+	if stale {
+		go func() {
+			_, _ = zagentFetch()
+			zagentCache.Lock()
+			zagentCache.refreshing = false
+			zagentCache.Unlock()
+		}()
+	}
+	if out == "" {
+		var err error
+		if out, err = zagentFetch(); err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+			return
+		}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
@@ -95,6 +140,9 @@ func handleZagentSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out, err := runZagent(60*time.Second, "set", body.Key, body.Value)
+	zagentCache.Lock()
+	zagentCache.out = ""
+	zagentCache.Unlock()
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return

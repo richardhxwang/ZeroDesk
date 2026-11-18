@@ -22,8 +22,6 @@ import (
 // keys from a FIFO. The browser gets its own window for it; the Zero's own
 // screen, keyboard and foreground app are not touched.
 
-var errNeedsRoot = fmt.Errorf("this app runs as administrator; open it on the Zero")
-
 const (
 	vfbWidth       = 320
 	vfbHeight      = 170
@@ -99,10 +97,6 @@ func withShim(execLine string, env []string) string {
 func (m *vappManager) start(a desktopApp) (*vsession, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if f := strings.Fields(a.Exec); edition == "store" && len(f) > 0 && (f[0] == "sudo" || f[0] == "/usr/bin/sudo") {
-		// the Store edition never starts anything as root
-		return nil, errNeedsRoot
-	}
 	for _, s := range m.sessions {
 		if s.AppID == a.ID && !s.isExited() {
 			return s, nil // one virtual copy per app

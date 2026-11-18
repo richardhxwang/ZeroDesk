@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { cached, revalidate } from '🍎/lib/swr.svelte.ts';
+	import { data } from '🍎/state/app_preload.ts';
 	import Glyph from '../common/Glyph.svelte';
 	import { onMount, tick } from 'svelte';
 	import { api, ApiError, post } from '🍎/lib/api.ts';
@@ -84,13 +86,22 @@
 			error = '';
 			return;
 		}
-		loading = true;
 		error = '';
+		// a folder seen before (or preloaded) paints at once; the listing refreshes behind it
+		type Listing = { path: string; entries: Entry[] };
+		const known = cached<Listing>(`fs:${p}`);
+		if (known) {
+			path = known.path;
+			entries = known.entries;
+			selected = null;
+		}
+		loading = !known;
 		try {
-			const res = await api<{ path: string; entries: Entry[] }>(`/api/fs/list?path=${encodeURIComponent(p)}`);
+			const res = (await revalidate(`fs:${p}`, data.fs(p))) as Listing;
+			if (known && known.path !== path) return; // navigated away meanwhile
 			path = res.path;
 			entries = res.entries;
-			selected = null;
+			if (!known) selected = null;
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : String(e);
 		} finally {

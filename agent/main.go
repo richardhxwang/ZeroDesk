@@ -82,6 +82,7 @@ func main() {
 	}
 	s.webapps = newWebApps(s.apps)
 	s.apps.keys = s.keys
+	go zagentWarm()
 	s.apps.ensureLauncherRunning()
 
 	mux := http.NewServeMux()

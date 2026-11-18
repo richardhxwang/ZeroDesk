@@ -431,10 +431,6 @@ func (m *appManager) handleOpen(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *appManager) open(ctx context.Context, a desktopApp) error {
-	if f := strings.Fields(a.Exec); edition == "store" && len(f) > 0 && (f[0] == "sudo" || f[0] == "/usr/bin/sudo") {
-		// the Store edition never starts anything as root; the launcher can
-		return fmt.Errorf("this app runs as administrator; open it from the Zero's launcher")
-	}
 	if _, err := m.stopForeground(ctx); err != nil {
 		return err
 	}
