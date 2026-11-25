@@ -21,6 +21,7 @@
 
 	let pane = $state<Pane>('discover');
 	let category = $state<string | null>(null);
+	let section = $state<'new' | 'updated' | null>(null);
 	let detail = $state<StoreApp | null>(null);
 	let query = $state('');
 	let error = $state('');
@@ -66,8 +67,10 @@
 		[...new Set(apps.map(primary))].sort((a, b) => (a === 'Other' ? 1 : b === 'Other' ? -1 : a.localeCompare(b))),
 	);
 	const by_date = (k: 'published_at' | 'updated_at') => [...apps].sort((a, b) => b[k].localeCompare(a[k]));
-	const fresh = $derived(by_date('published_at').slice(0, 6));
-	const updated = $derived(by_date('updated_at').filter((a) => !fresh.includes(a)).slice(0, 6));
+	const newest = $derived(by_date('published_at'));
+	const latest = $derived(by_date('updated_at'));
+	const fresh = $derived(newest.slice(0, 6));
+	const updated = $derived(latest.filter((a) => !fresh.includes(a)).slice(0, 6));
 	const alpha = $derived([...apps].sort((a, b) => title(a).localeCompare(title(b))));
 	const results = $derived.by(() => {
 		const q = query.trim().toLowerCase();
@@ -106,9 +109,24 @@
 	function go(p: Pane) {
 		pane = p;
 		category = null;
+		section = null;
 		detail = null;
 		query = '';
 		content_el?.scrollTo({ top: 0 });
+	}
+
+	function see_all(s: 'new' | 'updated') {
+		section = s;
+		category = null;
+		detail = null;
+		query = '';
+		content_el?.scrollTo({ top: 0 });
+	}
+
+	function back() {
+		if (detail) detail = null;
+		else if (section) section = null;
+		else category = null;
 	}
 
 	function show(a: StoreApp) {
@@ -172,7 +190,21 @@
 	}
 
 	const header = $derived(
-		detail ? '' : query.trim() ? t('store.results') : pane === 'categories' ? (category ? cat_name(category) : t('store.categories')) : pane === 'updates' ? t('store.updates') : t('store.discover'),
+		detail
+			? ''
+			: query.trim()
+				? t('store.results')
+				: pane === 'categories'
+					? category
+						? cat_name(category)
+						: t('store.categories')
+					: pane === 'updates'
+						? t('store.updates')
+						: section
+							? section === 'new'
+								? t('store.new')
+								: t('store.recently_updated')
+							: t('store.discover'),
 	);
 </script>
 
@@ -248,8 +280,8 @@
 
 	<section class="main">
 		<header class="titlebar app-window-drag-handle">
-			{#if detail || category}
-				<button class="back" aria-label={t('store.back')} onclick={() => (detail ? (detail = null) : (category = null))}>
+			{#if detail || category || section}
+				<button class="back" aria-label={t('store.back')} onclick={back}>
 					<i class="f7-icons">chevron_left</i>
 				</button>
 			{/if}
@@ -334,10 +366,18 @@
 				{/if}
 			{:else if !store_state.loaded}
 				{@render skeleton()}
+			{:else if section}
+				<div class="grid">{#each (section === 'new' ? newest : latest) as a (a.id)}{@render row(a)}{/each}</div>
 			{:else if pane === 'discover'}
-				<h3>{t('store.new')}</h3>
+				<div class="section">
+					<h3>{t('store.new')}</h3>
+					<button class="see-all" onclick={() => see_all('new')}>{t('store.see_all')}</button>
+				</div>
 				<div class="grid">{#each fresh as a (a.id)}{@render row(a)}{/each}</div>
-				<h3>{t('store.recently_updated')}</h3>
+				<div class="section">
+					<h3>{t('store.recently_updated')}</h3>
+					<button class="see-all" onclick={() => see_all('updated')}>{t('store.see_all')}</button>
+				</div>
 				<div class="grid">{#each updated as a (a.id)}{@render row(a)}{/each}</div>
 				<h3>{t('store.all_apps', { n: apps.length })}</h3>
 				<div class="grid">{#each alpha as a (a.id)}{@render row(a)}{/each}</div>
@@ -552,6 +592,32 @@
 
 		&:first-child {
 			margin-top: 4px;
+		}
+	}
+
+	.section {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 12px;
+		margin: 22px 0 10px;
+
+		&:first-child {
+			margin-top: 4px;
+		}
+
+		h3 {
+			margin: 0;
+		}
+	}
+
+	.see-all {
+		flex: none;
+		font-size: 13px;
+		color: var(--system-color-primary);
+
+		&:hover {
+			text-decoration: underline;
 		}
 	}
 
