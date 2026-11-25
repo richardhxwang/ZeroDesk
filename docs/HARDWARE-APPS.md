@@ -2,7 +2,7 @@
 
 ZeroDesk ships native windows for the official CardputerZero hardware apps. Each one is a ZeroDesk app ([APP-SPEC.md](APP-SPEC.md)) with its web files in `hwapps/<id>/` and a backend in `agent/hw_*.go` that runs as `zerodesk hw <id>`. The id is the launcher id of the original app, so the native window replaces that app's virtual screen.
 
-Every backend runs as the device user (`pi`) in its own transient user unit, with hardware access from group membership (`spi`, `gpio`, `i2c`, `dialout`, `video`, `input`). None of them needs root, so the Store edition includes all of them. The hardware starts when the first window opens and stops when the last one closes.
+Every backend runs as the device user in its own transient user unit, with hardware access from group membership (`spi`, `gpio`, `i2c`, `dialout`, `video`, `input`). None of them needs root, so the Store edition includes all of them. The hardware starts when the first window opens and stops when the last one closes.
 
 | App | id | Hardware | Original |
 |---|---|---|---|

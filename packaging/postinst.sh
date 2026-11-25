@@ -1,8 +1,51 @@
 #!/bin/sh
 set -e
+
+# The unit names 'pi', the device user of the CardputerZero Store images. A
+# device whose account is called something else gets a drop-in for that
+# account instead: ZeroDesk has to run as the owner of the desktop session to
+# reach the launcher's systemd user units, PulseAudio and the user's files, so
+# a freshly created 'pi' user would never see them.
+device_user() {
+	id pi >/dev/null 2>&1 && { echo pi; return 0; }
+	fallback=""
+	for home in /home/*; do
+		[ -d "$home" ] || continue
+		u=${home#/home/}
+		id "$u" >/dev/null 2>&1 || continue
+		[ "$(id -u "$u")" -ge 1000 ] || continue
+		case "$(getent passwd "$u" | cut -d: -f7)" in
+			*/nologin|*/false) continue ;;
+		esac
+		# an account with a session is the desktop user
+		if loginctl list-sessions --no-legend 2>/dev/null | awk '{print $3}' | grep -qx "$u"; then
+			echo "$u"
+			return 0
+		fi
+		fallback=${fallback:-$u}
+	done
+	echo "$fallback"
+}
+
 if [ "$1" = "configure" ]; then
-	if ! id pi >/dev/null 2>&1; then
-		echo "zerodesk-cp0: the service runs as user 'pi', which does not exist on this system" >&2
+	user=$(device_user)
+	dropin=/etc/systemd/system/zerodesk-cp0.service.d/device-user.conf
+	if [ -z "$user" ]; then
+		echo "zerodesk-cp0: no device user found; set User= and Group= in $dropin, then restart zerodesk-cp0.service" >&2
+	elif [ "$user" = pi ]; then
+		rm -f "$dropin" 2>/dev/null || true
+	else
+		group=$(id -gn "$user" 2>/dev/null || echo "$user")
+		if mkdir -p "$(dirname "$dropin")" && {
+			echo "# Written by the zerodesk-cp0 package: this device's account is '$user', not 'pi'."
+			echo "[Service]"
+			echo "User=$user"
+			echo "Group=$group"
+		} > "$dropin"; then
+			echo "zerodesk-cp0: running as '$user', this device's account (see $dropin)"
+		else
+			echo "zerodesk-cp0: cannot write $dropin; add User=$user and Group=$group under [Service] by hand" >&2
+		fi
 	fi
 	# serve http://cardputerzero.local on port 80 without running as root
 	if command -v setcap >/dev/null 2>&1; then

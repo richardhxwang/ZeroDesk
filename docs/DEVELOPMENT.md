@@ -60,7 +60,7 @@ One codebase, two Debian packages, same package name `zerodesk-cp0` and the same
 
 ### Root audit (Store rule: "Applications that run with root privileges are not allowed")
 
-ZeroDesk runs as the system service `zerodesk-cp0.service` with `User=pi` (Store policy: system services must name a non-root user; same layout as the published `czproxy`). At start it sets `XDG_RUNTIME_DIR` and the session bus address itself (`agent/sessionenv.go`) so it can still reach the user's systemd (launcher, web-app backends) and PulseAudio.
+ZeroDesk runs as the system service `zerodesk-cp0.service` with `User=pi` (Store policy: system services must name a non-root user; same layout as the published `czproxy`). On a device whose account is called something else, `postinst.sh` writes a drop-in, `/etc/systemd/system/zerodesk-cp0.service.d/device-user.conf`, naming that account instead: ZeroDesk must run as the owner of the desktop session to reach the launcher's user units, PulseAudio and the home directory, so creating a `pi` user would not work. At start it sets `XDG_RUNTIME_DIR` and the session bus address itself (`agent/sessionenv.go`) so it can still reach the user's systemd (launcher, web-app backends) and PulseAudio.
 
 | Was | Now | Why it is allowed |
 |---|---|---|
