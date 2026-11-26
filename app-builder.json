@@ -1,7 +1,7 @@
 {
   "app_name": "ZeroDesk CP0",
   "package_name": "zerodesk-cp0",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "store": {
     "summary": "Your CardputerZero on a big screen: a desktop and App Store in any browser",
     "description": "Your CardputerZero, on a big screen.\n\nOpen it in your laptop's browser and you get a full desktop: windows, a Dock, Finder and Terminal. On your phone it becomes a home screen that sits right next to your other apps.\n\nEvery app in the store is one click away. Install it, update it, done.\n\nCompass, GPS, camera, IR, LoRa and NFC run in their own windows, live.\n\nScan the code on the Zero's screen and you're in. Nothing to install on your computer or phone.\n\nBuilding an app? Give it a ZeroDesk window: github.com/richardhxwang/ZeroDesk",
