@@ -155,7 +155,22 @@ export function open_settings(pane: string) {
 	open_app('settings');
 }
 
+// How many times each window has been closed; see closed_since.
+const close_count: Record<string, number> = {};
+
+/**
+ * For a reply that acts on a window (opens or closes windows, starts an app):
+ * call it when the request goes out; the returned check is true once the window
+ * has been closed since then. Taken per request, not per component: a window
+ * reopened during its close animation is the same component brought back.
+ */
+export function closed_since(id: AppID): () => boolean {
+	const n = close_count[id] ?? 0;
+	return () => (close_count[id] ?? 0) !== n;
+}
+
 export function close_app(id: AppID) {
+	close_count[id] = (close_count[id] ?? 0) + 1;
 	apps.open[id] = false;
 	apps.minimized[id] = false;
 	apps.fullscreen[id] = false;

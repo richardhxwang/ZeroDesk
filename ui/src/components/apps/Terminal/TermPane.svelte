@@ -54,14 +54,8 @@
 	let search: import('@xterm/addon-search').SearchAddon | undefined;
 	// set on destroy: the xterm modules load asynchronously and may arrive after the pane is gone
 	let destroyed = false;
-	// clear_find's delayed passes; a new search, or a press in the pane (a drag
-	// that selects text), cancels them
-	let clear_frame = 0;
-	let clear_timer: ReturnType<typeof setTimeout> | undefined;
-	function cancel_clear() {
-		cancelAnimationFrame(clear_frame);
-		clearTimeout(clear_timer);
-	}
+	/** the term this pane's search addon last searched (it continues from a selection only for that term) */
+	let searched: string | undefined;
 
 	// Terminal programs align text by character columns, so this is the one
 	// place that uses a monospaced face; a chosen font goes in front of these.
@@ -284,20 +278,34 @@
 			focus: () => tm.focus(),
 			has_selection: () => tm.hasSelection(),
 			find: (q, step) => {
-				cancel_clear();
-				if (!q) return search?.clearDecorations();
+				if (!search) return;
+				if (!q) {
+					searched = undefined;
+					return search.clearDecorations();
+				}
 				// while typing, stay on the match that still fits; Enter moves on
 				const opts = { decorations: decorations(), incremental: !step };
-				if (step === 'prev') search?.findPrevious(q, opts);
-				else search?.findNext(q, opts);
+				// Next/Previous from a selection the person made: the addon only moves on
+				// from a selection once it has searched this term, so search once without
+				// scrolling, put their selection back, then move from it
+				if (step && searched !== q && tm.hasSelection()) {
+					const { start, end } = tm.getSelectionPosition()!;
+					// noScroll: honoured by the addon, missing from its public typings
+					search.findNext(q, { ...opts, incremental: true, noScroll: true } as typeof opts);
+					tm.select(start.x, start.y, (end.y - start.y) * tm.cols + end.x - start.x);
+				}
+				if (step === 'prev') search.findPrevious(q, opts);
+				else search.findNext(q, opts);
+				searched = q;
 			},
 			clear_find: () => {
-				cancel_clear();
+				searched = undefined;
+				// output re-runs the search 200 ms later (addon-search 0.15, private
+				// field); left queued, it would search the cleared term and clear the
+				// selection, or select a match, after this pane has given up the find bar
+				clearTimeout((search as unknown as { _highlightTimeout?: ReturnType<typeof setTimeout> })?._highlightTimeout);
 				search?.clearDecorations();
 				tm.clearSelection();
-				// a highlight pass the addon still has queued can select again
-				clear_frame = requestAnimationFrame(() => tm.clearSelection());
-				clear_timer = setTimeout(() => tm.clearSelection(), 250);
 			},
 		});
 	});
@@ -320,7 +328,7 @@
 	class:dragging
 	style:background={theme.background}
 	role="presentation"
-	onpointerdown={() => (cancel_clear(), onfocus())}
+	onpointerdown={onfocus}
 	ondragover={(e) => {
 		if (e.dataTransfer?.types.includes('Files')) {
 			e.preventDefault();
