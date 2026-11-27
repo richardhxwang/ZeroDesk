@@ -27,3 +27,31 @@ export function close(l: Layout, target: number): Layout | null {
 	if (!b) return a;
 	return { dir: l.dir, a, b };
 }
+
+export type Rect = { x: number; y: number; w: number; h: number };
+
+/**
+ * Lay the panes out flat, as fractions of the tab. The Terminal renders them
+ * in one keyed list, so splitting or closing a pane moves the others instead
+ * of recreating them (which would end their shells).
+ */
+export function tile(l: Layout): { panes: { pane: number; rect: Rect }[]; dividers: { dir: 'row' | 'col'; rect: Rect }[] } {
+	const panes: { pane: number; rect: Rect }[] = [];
+	const dividers: { dir: 'row' | 'col'; rect: Rect }[] = [];
+	const walk = (n: Layout, r: Rect) => {
+		if ('pane' in n) return void panes.push({ pane: n.pane, rect: r });
+		if (n.dir === 'row') {
+			const w = r.w / 2;
+			walk(n.a, { ...r, w });
+			walk(n.b, { ...r, x: r.x + w, w });
+			dividers.push({ dir: 'row', rect: { x: r.x + w, y: r.y, w: 0, h: r.h } });
+		} else {
+			const h = r.h / 2;
+			walk(n.a, { ...r, h });
+			walk(n.b, { ...r, y: r.y + h, h });
+			dividers.push({ dir: 'col', rect: { x: r.x, y: r.y + h, w: r.w, h: 0 } });
+		}
+	};
+	walk(l, { x: 0, y: 0, w: 1, h: 1 });
+	return { panes, dividers };
+}
