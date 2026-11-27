@@ -56,6 +56,8 @@
 	let destroyed = false;
 	/** the term this pane's search addon last searched (it continues from a selection only for that term) */
 	let searched: string | undefined;
+	/** the last press in this pane held Alt: an Alt-drag makes a block (column) selection */
+	let block_drag = false;
 
 	// Terminal programs align text by character columns, so this is the one
 	// place that uses a monospaced face; a chosen font goes in front of these.
@@ -285,14 +287,29 @@
 				}
 				// while typing, stay on the match that still fits; Enter moves on
 				const opts = { decorations: decorations(), incremental: !step };
-				// Next/Previous from a selection the person made: the addon only moves on
-				// from a selection once it has searched this term, so search once without
-				// scrolling, put their selection back, then move from it
-				if (step && searched !== q && tm.hasSelection()) {
+				// Next/Previous from a selection the person made: the addon moves on from
+				// a selection only for the term it searched last, otherwise it starts at
+				// the selection. Give it the highlights and that term without touching the
+				// selection (addon-search 0.15, pinned; these members are private).
+				// A block selection dragged right to left ends at its lower left corner, and
+				// the addon moves on from there, inside the block. Make it a plain selection
+				// from the block's top left to its bottom right first; a move replaces the
+				// selection with the match anyway.
+				if (step && block_drag && tm.hasSelection()) {
 					const { start, end } = tm.getSelectionPosition()!;
-					// noScroll: honoured by the addon, missing from its public typings
-					search.findNext(q, { ...opts, incremental: true, noScroll: true } as typeof opts);
-					tm.select(start.x, start.y, (end.y - start.y) * tm.cols + end.x - start.x);
+					const l = Math.min(start.x, end.x);
+					const r = Math.max(start.x, end.x);
+					tm.select(l, start.y, (end.y - start.y) * tm.cols + r - l);
+				}
+				if (step && searched !== q && tm.hasSelection()) {
+					const addon = search as unknown as {
+						_highlightAllMatches(term: string, o: typeof opts): void;
+						_cachedSearchTerm?: string;
+						_lastSearchOptions?: typeof opts;
+					};
+					addon._highlightAllMatches(q, opts);
+					addon._cachedSearchTerm = q;
+					addon._lastSearchOptions = opts;
 				}
 				if (step === 'prev') search.findPrevious(q, opts);
 				else search.findNext(q, opts);
@@ -328,7 +345,7 @@
 	class:dragging
 	style:background={theme.background}
 	role="presentation"
-	onpointerdown={onfocus}
+	onpointerdown={(e) => ((block_drag = e.altKey), onfocus())}
 	ondragover={(e) => {
 		if (e.dataTransfer?.types.includes('Files')) {
 			e.preventDefault();

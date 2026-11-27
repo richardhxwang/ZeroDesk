@@ -16,6 +16,9 @@
 
 	let session = $state<string | null>(null);
 	let error = $state('');
+	/** a state of ours to show, kept as a key so it follows the language */
+	let notice = $state<'vapp.on_zero' | 'vapp.zero_only' | null>(null);
+	const message = $derived(error || (notice ? t(notice) : ''));
 	let status = $state<ScreenStatus>('connecting');
 	let show_keys = $state(false);
 	let view = $state<ScreenView>();
@@ -57,7 +60,7 @@
 			if (e instanceof ApiError && e.status === 409) {
 				if (destroyed) return;
 				// closed meanwhile: do not start it on the Zero; reopened, the toolbar's button still can
-				if (closed()) error = t('vapp.zero_only');
+				if (closed()) notice = 'vapp.zero_only';
 				else await open_on_device();
 				return;
 			}
@@ -83,7 +86,7 @@
 			if (destroyed) return;
 			// closed (and maybe reopened) meanwhile: leave the windows as they are
 			if (closed()) {
-				error = t('vapp.on_zero');
+				notice = 'vapp.on_zero';
 				return;
 			}
 			open_app('device');
@@ -94,7 +97,7 @@
 	}
 
 	const subtitle = $derived(
-		error ? error : ended ? t('vapp.ended') : status === 'live' ? t('vapp.on_computer') : t('device.connecting'),
+		message ? message : ended ? t('vapp.ended') : status === 'live' ? t('vapp.on_computer') : t('device.connecting'),
 	);
 	// narrow window: icon-only buttons so the title keeps its room
 	let win_w = $state(800);
@@ -115,7 +118,7 @@
 	{#if session}
 		<ScreenView bind:this={view} path="/ws/vapp?id={session}" {show_keys} pointer bind:status />
 	{:else}
-		<div class="placeholder">{error || t('device.connecting')}</div>
+		<div class="placeholder">{message || t('device.connecting')}</div>
 	{/if}
 </div>
 
