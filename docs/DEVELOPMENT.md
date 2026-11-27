@@ -80,8 +80,8 @@ Nothing is left out of the Store edition yet. Planned native apps for the NFC, S
 ## Package
 
 ```bash
-packaging/build-deb.sh 0.4.1 1      # -> dist/zerodesk-cp0_0.4.1-1_arm64.deb and dist/zerodesk-cp0_0.4.1-1+full_arm64.deb
-scripts/store-check.sh dist/zerodesk-cp0_0.4.1-1_arm64.deb
+packaging/build-deb.sh 0.4.2 1      # -> dist/zerodesk-cp0_0.4.2-1_arm64.deb and dist/zerodesk-cp0_0.4.2-1+full_arm64.deb
+scripts/store-check.sh dist/zerodesk-cp0_0.4.2-1_arm64.deb
 ```
 
 `build-deb.sh` needs pnpm, Go, Docker (the virtual-screen library is compiled in an arm64 `debian:trixie` container) and Python with Pillow (`packaging/store-assets.py` makes the 100 px launcher icon and the 256 px Store icon). `store-check.sh` runs, in Docker, the same checks as `czdev publish` before it uploads anything (with a stub GitHub login) and the packages repository's validate-pr checks, using fresh clones of `CardputerZero/AppBuilder` and `CardputerZero/packages` in `.cache/`. Nothing is uploaded.
