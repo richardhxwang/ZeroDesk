@@ -8,7 +8,7 @@
 	import MinimapPlugin from 'wavesurfer.js/dist/plugins/minimap.js';
 	import { api, post } from '🍎/lib/api.ts';
 	import { t } from '🍎/state/i18n.svelte.ts';
-	import { apps, while_open } from '🍎/state/apps.svelte.ts';
+	import { apps } from '🍎/state/apps.svelte.ts';
 	import { locale_of, preferences } from '🍎/state/preferences.svelte.ts';
 	import { fmt_time, list_audio, type Track } from '../Music/library.ts';
 
@@ -189,11 +189,11 @@
 	// ---- recording ----
 
 	let poll: ReturnType<typeof setInterval> | undefined;
-	// false once the window has closed (its close animation included): replies
-	// that arrive later must not load, select or poll
+	// Replies that arrive once the window is closed must not load, select or poll.
+	// A closed window stays mounted through its close animation and a reopen then
+	// brings the same component back, so this is whether it is open right now.
 	let alive = true;
-	const still_open = while_open('recorder');
-	const live = () => alive && still_open();
+	const live = () => alive && !!apps.open.recorder;
 	/** (Re)start polling the recording status; never after the window has closed (callers await first). */
 	function start_poll() {
 		clearInterval(poll);

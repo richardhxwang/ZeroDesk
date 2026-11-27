@@ -5,8 +5,8 @@
 	export type PaneApi = {
 		focus(): void;
 		/** search as the query is typed, or step to the next/previous match */
-		/** keep_selection: count and highlight matches but leave a selection the user made where it is */
-		find(query: string, step?: 'next' | 'prev', keep_selection?: boolean): void;
+		find(query: string, step?: 'next' | 'prev'): void;
+		has_selection(): boolean;
 		clear_find(): void;
 	};
 
@@ -54,6 +54,14 @@
 	let search: import('@xterm/addon-search').SearchAddon | undefined;
 	// set on destroy: the xterm modules load asynchronously and may arrive after the pane is gone
 	let destroyed = false;
+	// clear_find's delayed passes; a new search, or a press in the pane (a drag
+	// that selects text), cancels them
+	let clear_frame = 0;
+	let clear_timer: ReturnType<typeof setTimeout> | undefined;
+	function cancel_clear() {
+		cancelAnimationFrame(clear_frame);
+		clearTimeout(clear_timer);
+	}
 
 	// Terminal programs align text by character columns, so this is the one
 	// place that uses a monospaced face; a chosen font goes in front of these.
@@ -272,27 +280,16 @@
 			matchOverviewRuler: '#8e8e93',
 			activeMatchColorOverviewRuler: '#ffd60a',
 		});
-		// clear_find's delayed passes; a new search in this pane cancels them
-		let clear_frame = 0;
-		let clear_timer: ReturnType<typeof setTimeout> | undefined;
-		const cancel_clear = () => {
-			cancelAnimationFrame(clear_frame);
-			clearTimeout(clear_timer);
-		};
 		register({
 			focus: () => tm.focus(),
-			find: (q, step, keep_selection) => {
+			has_selection: () => tm.hasSelection(),
+			find: (q, step) => {
 				cancel_clear();
 				if (!q) return search?.clearDecorations();
-				const kept = keep_selection ? tm.getSelectionPosition() : undefined;
 				// while typing, stay on the match that still fits; Enter moves on
 				const opts = { decorations: decorations(), incremental: !step };
 				if (step === 'prev') search?.findPrevious(q, opts);
 				else search?.findNext(q, opts);
-				if (kept) {
-					const { start, end } = kept;
-					tm.select(start.x, start.y, (end.y - start.y) * tm.cols + end.x - start.x);
-				}
 			},
 			clear_find: () => {
 				cancel_clear();
@@ -323,7 +320,7 @@
 	class:dragging
 	style:background={theme.background}
 	role="presentation"
-	onpointerdown={onfocus}
+	onpointerdown={() => (cancel_clear(), onfocus())}
 	ondragover={(e) => {
 		if (e.dataTransfer?.types.includes('Files')) {
 			e.preventDefault();
