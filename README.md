@@ -79,7 +79,9 @@ Browse the device's files, upload by dragging files from your computer into a wi
 
 ### Terminal
 
-A full shell on the device.
+A full shell on the device, with tabs and splits, find, clickable links, inline images, copy from the shell (OSC 52), and files dropped onto the window uploaded to `~/Downloads` with their paths typed in.
+
+Colour schemes that follow light and dark appearance, fonts (including Nerd Fonts for Powerline prompts, or any font installed on your computer) and shell add-ons such as Oh My Zsh, Powerlevel10k, Starship, fzf and zoxide are in **Settings → Terminal**. Nothing is bundled: each one is downloaded when you pick it and checked against a checksum pinned in ZeroDesk.
 
 ![Terminal](docs/media/terminal.webp)
 
@@ -103,7 +105,7 @@ Records with the CardputerZero's microphone. Scrub through the waveform, skip 15
 
 ### Settings
 
-Wi-Fi, network, battery, general (restart, developer options), appearance, display brightness and sleep, sound, expansion-port power, and date and time.
+Wi-Fi, network, battery, general (restart, developer options), appearance (light and dark, wallpaper, language), Terminal, display brightness and sleep, sound, expansion-port power, and date and time.
 
 ![Settings](docs/media/settings.webp)
 
@@ -270,7 +272,7 @@ Contributions are welcome, from a typo fix to a new window for someone's app. Sm
 
 Issues, pull requests and commit messages can be in any language you're comfortable with; English and Chinese are both fine.
 
-**Other ways to help.** Translate ZeroDesk into your language (the strings are in [ui/src/state/i18n.svelte.ts](ui/src/state/i18n.svelte.ts); English and Chinese so far), give your own CardputerZero app a ZeroDesk window (see [For developers](#for-developers)), or try ZeroDesk on a device and tell us what felt wrong.
+**Other ways to help.** Translate ZeroDesk into your language (the strings are in [ui/src/state/i18n.svelte.ts](ui/src/state/i18n.svelte.ts)), give your own CardputerZero app a ZeroDesk window (see [For developers](#for-developers)), or try ZeroDesk on a device and tell us what felt wrong.
 
 ## Acknowledgements
 
