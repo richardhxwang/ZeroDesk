@@ -364,6 +364,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 Piano samples recorded by Akai and released into the public domain; SFZ mapping by kinwie (https://github.com/sfzinstruments/SplendidGrandPiano), converted for the web by smpldsnds. Downloaded by the device on first use.
 
+## Terminal presets
+
+Downloaded by the device only when picked in Settings › Terminal; the package carries the list (`agent/presets/catalog.json`, with a few colours of each scheme for its tile). Colour schemes: iTerm2-Color-Schemes by Mark Badolato and contributors (https://github.com/mbadolato/iTerm2-Color-Schemes, MIT). Fonts: JetBrains Mono, Fira Code, IBM Plex Mono, Source Code Pro and Cascadia Code (SIL Open Font License 1.1) and Ubuntu Mono (Ubuntu Font Licence 1.0), from Fontsource (https://fontsource.org); MesloLGS Nerd Font (Apache 2.0) and JetBrains Mono Nerd Font (OFL 1.1) from Nerd Fonts (https://www.nerdfonts.com, MIT for the patcher). Each preset's licence and source are listed in the catalog.
+
 ## WebSR network weights (websr/cnn-m, websr/cnn-s)
 
 From https://github.com/sb2702/websr (MIT, same licence as @websr/webgl above), vendored in `ui/public/websr/`.
@@ -478,10 +482,6 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-## Build tools (not shipped)
-
-nfpm (https://github.com/goreleaser/nfpm, MIT) builds the Debian package; Vite and TypeScript build the web UI.
-
 ## Go module rsc.io/qr v0.2.0
 
 ```
@@ -513,3 +513,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
+
+## Build tools (not shipped)
+
+nfpm (https://github.com/goreleaser/nfpm, MIT) builds the Debian package; Vite and TypeScript build the web UI.

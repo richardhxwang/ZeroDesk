@@ -1,0 +1,728 @@
+{
+ "themes": [
+  {
+   "id": "dracula",
+   "name": "Dracula",
+   "preview": {
+    "dark": [
+     "#282a36",
+     "#f8f8f2",
+     "#ff5555",
+     "#50fa7b",
+     "#f1fa8c",
+     "#bd93f9",
+     "#ff79c6",
+     "#8be9fd"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Dracula.json",
+     "size": 538,
+     "sha256": "09af684488812172f2c27332f6f340c169e1671e378c4a3924143303d78c054b"
+    }
+   ]
+  },
+  {
+   "id": "nord",
+   "name": "Nord",
+   "preview": {
+    "light": [
+     "#e5e9f0",
+     "#414858",
+     "#bf616a",
+     "#96b17f",
+     "#c5a565",
+     "#81a1c1",
+     "#b48ead",
+     "#7bb3c3"
+    ],
+    "dark": [
+     "#2e3440",
+     "#d8dee9",
+     "#bf616a",
+     "#a3be8c",
+     "#ebcb8b",
+     "#81a1c1",
+     "#b48ead",
+     "#88c0d0"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Nord%20Light.json",
+     "size": 541,
+     "sha256": "bed65fe1d2588143262c73b54b3055b118dfa3b3fcb8feda5769cc3246af86cd"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Nord.json",
+     "size": 535,
+     "sha256": "75684a7e7d0b8acfdb3be50798bd04b028b3bb1fd6cc86ab9e0c8c15688863ae"
+    }
+   ]
+  },
+  {
+   "id": "catppuccin",
+   "name": "Catppuccin",
+   "preview": {
+    "light": [
+     "#eff1f5",
+     "#4c4f69",
+     "#d20f39",
+     "#40a02b",
+     "#df8e1d",
+     "#1e66f5",
+     "#ea76cb",
+     "#179299"
+    ],
+    "dark": [
+     "#1e1e2e",
+     "#cdd6f4",
+     "#f38ba8",
+     "#a6e3a1",
+     "#f9e2af",
+     "#89b4fa",
+     "#f5c2e7",
+     "#94e2d5"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Catppuccin%20Latte.json",
+     "size": 547,
+     "sha256": "9d044d2310f1a3a2d20d925e71905f2a785c3ca2f6f8bc38d79d4fd8f75235aa"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Catppuccin%20Mocha.json",
+     "size": 547,
+     "sha256": "b5e3d8794b9a14bc632f39f63b84a649b65a379fa3d29dbc6efe2a571b864c16"
+    }
+   ]
+  },
+  {
+   "id": "tokyonight",
+   "name": "Tokyo Night",
+   "preview": {
+    "light": [
+     "#e1e2e7",
+     "#3760bf",
+     "#f52a65",
+     "#587539",
+     "#8c6c3e",
+     "#2e7de9",
+     "#9854f1",
+     "#007197"
+    ],
+    "dark": [
+     "#24283b",
+     "#c0caf5",
+     "#f7768e",
+     "#9ece6a",
+     "#e0af68",
+     "#7aa2f7",
+     "#bb9af7",
+     "#7dcfff"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/TokyoNight%20Day.json",
+     "size": 545,
+     "sha256": "2bc3de50265ebe694268e6a32b455633b30e147a760631e8dc36c9cd16a13f40"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/TokyoNight%20Storm.json",
+     "size": 547,
+     "sha256": "2b58e2f1ca176f8ecf949f46953ca6f24721207851d0ca5e4f8c7579d2909a6b"
+    }
+   ]
+  },
+  {
+   "id": "gruvbox",
+   "name": "Gruvbox",
+   "preview": {
+    "light": [
+     "#fbf1c7",
+     "#3c3836",
+     "#cc241d",
+     "#98971a",
+     "#d79921",
+     "#458588",
+     "#b16286",
+     "#689d6a"
+    ],
+    "dark": [
+     "#282828",
+     "#ebdbb2",
+     "#cc241d",
+     "#98971a",
+     "#d79921",
+     "#458588",
+     "#b16286",
+     "#689d6a"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Gruvbox%20Light.json",
+     "size": 544,
+     "sha256": "57b36c1f2a142233a04945dce1748b112544974322105c71e431a9e663d68d33"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Gruvbox%20Dark.json",
+     "size": 543,
+     "sha256": "629123a65b64e129732c0918bc038a62786b36e27123efe93fd07fc89d641b89"
+    }
+   ]
+  },
+  {
+   "id": "solarized",
+   "name": "Solarized",
+   "preview": {
+    "light": [
+     "#fdf6e3",
+     "#657b83",
+     "#dc322f",
+     "#859900",
+     "#b58900",
+     "#268bd2",
+     "#d33682",
+     "#2aa198"
+    ],
+    "dark": [
+     "#002b36",
+     "#839496",
+     "#dc322f",
+     "#859900",
+     "#b58900",
+     "#268bd2",
+     "#d33682",
+     "#2aa198"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/iTerm2%20Solarized%20Light.json",
+     "size": 553,
+     "sha256": "522c87646ca6d476086234ab306342c1572e72d47077777da36421d3ab53ce2c"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/iTerm2%20Solarized%20Dark.json",
+     "size": 552,
+     "sha256": "59ba8fc72db6e818e542c25883e819423363daf11733d653c7e855b107816e8f"
+    }
+   ]
+  },
+  {
+   "id": "one-half",
+   "name": "One Half",
+   "preview": {
+    "light": [
+     "#fafafa",
+     "#383a42",
+     "#e45649",
+     "#50a14f",
+     "#c18401",
+     "#0184bc",
+     "#a626a4",
+     "#0997b3"
+    ],
+    "dark": [
+     "#282c34",
+     "#dcdfe4",
+     "#e06c75",
+     "#98c379",
+     "#e5c07b",
+     "#61afef",
+     "#c678dd",
+     "#56b6c2"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/One%20Half%20Light.json",
+     "size": 545,
+     "sha256": "69a4530ddc3f6209db1b0a04edc9b06f0853ea33cb1280926c0bcdeb9188ee61"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/One%20Half%20Dark.json",
+     "size": 544,
+     "sha256": "16c319d9e7d8c1d6654edebbdd561256475e6d4c34728d10f47b5f9867d67dca"
+    }
+   ]
+  },
+  {
+   "id": "rose-pine",
+   "name": "Rosé Pine",
+   "preview": {
+    "light": [
+     "#faf4ed",
+     "#575279",
+     "#b4637a",
+     "#286983",
+     "#ea9d34",
+     "#56949f",
+     "#907aa9",
+     "#d7827e"
+    ],
+    "dark": [
+     "#191724",
+     "#e0def4",
+     "#eb6f92",
+     "#31748f",
+     "#f6c177",
+     "#9ccfd8",
+     "#c4a7e7",
+     "#ebbcba"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Rose%20Pine%20Dawn.json",
+     "size": 545,
+     "sha256": "1af7ff6f57e544ac3ec227e5f84c64c3c66dbc7695ce97c630dcbe891bcd15b7"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Rose%20Pine.json",
+     "size": 540,
+     "sha256": "983c29285a58d6e42772a949048e4f79ba19f74bb5e851ac972b29ee3d4f6bc8"
+    }
+   ]
+  },
+  {
+   "id": "github",
+   "name": "GitHub",
+   "preview": {
+    "light": [
+     "#ffffff",
+     "#1f2328",
+     "#cf222e",
+     "#116329",
+     "#4d2d00",
+     "#0969da",
+     "#8250df",
+     "#1b7c83"
+    ],
+    "dark": [
+     "#0d1117",
+     "#e6edf3",
+     "#ff7b72",
+     "#3fb950",
+     "#d29922",
+     "#58a6ff",
+     "#bc8cff",
+     "#39c5cf"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/GitHub%20Light%20Default.json",
+     "size": 551,
+     "sha256": "a55ba757e2dc88bd801a923fd5396e4d9399e06b74d19ba43464f8b917b4c8f0"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/GitHub%20Dark%20Default.json",
+     "size": 550,
+     "sha256": "797d57a33c912ef540d18b0cfe241c7b4b551be2b52e6039a87e9e04271795a1"
+    }
+   ]
+  },
+  {
+   "id": "kanagawa",
+   "name": "Kanagawa",
+   "preview": {
+    "light": [
+     "#f2ecbc",
+     "#545464",
+     "#c84053",
+     "#6f894e",
+     "#77713f",
+     "#4d699b",
+     "#b35b79",
+     "#597b75"
+    ],
+    "dark": [
+     "#1f1f28",
+     "#dcd7ba",
+     "#c34043",
+     "#76946a",
+     "#c0a36e",
+     "#7e9cd8",
+     "#957fb8",
+     "#6a9589"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Kanagawa%20Lotus.json",
+     "size": 545,
+     "sha256": "bbb939136a381c940c3e50354612728452eddce447fccb0bb403af7ed7a55e19"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Kanagawa%20Wave.json",
+     "size": 544,
+     "sha256": "bef88bd73f32bf43c5c700aced41b55466f3aa007c848c3f6d02bbac93dc0fe9"
+    }
+   ]
+  },
+  {
+   "id": "everforest",
+   "name": "Everforest",
+   "preview": {
+    "light": [
+     "#efebd4",
+     "#5c6a72",
+     "#e67e80",
+     "#9ab373",
+     "#c1a266",
+     "#7fbbb3",
+     "#d699b6",
+     "#83c092"
+    ],
+    "dark": [
+     "#232a2e",
+     "#d3c6aa",
+     "#e67e80",
+     "#a7c080",
+     "#dbbc7f",
+     "#7fbbb3",
+     "#d699b6",
+     "#83c092"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Everforest%20Light%20Med.json",
+     "size": 551,
+     "sha256": "847a573137f7d10bb30d7ce3d87528675c1ebd5b402cad92e7882f3f23903fe4"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Everforest%20Dark%20Med.json",
+     "size": 550,
+     "sha256": "43a5fb56e01a90fa67602d04fa33dd4044d16174ecd11aaa04e39c487e8b35ae"
+    }
+   ]
+  },
+  {
+   "id": "monokai-pro",
+   "name": "Monokai Pro",
+   "preview": {
+    "light": [
+     "#faf4f2",
+     "#29242a",
+     "#e14775",
+     "#269d69",
+     "#cc7a0a",
+     "#e16032",
+     "#7058be",
+     "#1c8ca8"
+    ],
+    "dark": [
+     "#2d2a2e",
+     "#fcfcfa",
+     "#ff6188",
+     "#a9dc76",
+     "#ffd866",
+     "#fc9867",
+     "#ab9df2",
+     "#78dce8"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Monokai%20Pro%20Light.json",
+     "size": 548,
+     "sha256": "3072146a82580ec85b4eee4022fee728e3b5461d7f034d97ed0272255f8b1dbf"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Monokai%20Pro.json",
+     "size": 542,
+     "sha256": "dc0dc8a10df4b9f7f95aa71916e684cfa57eabc6a05f52a4b1680ef1ec1d3a57"
+    }
+   ]
+  },
+  {
+   "id": "ayu",
+   "name": "Ayu",
+   "preview": {
+    "light": [
+     "#f8f9fa",
+     "#5c6166",
+     "#ea6c6d",
+     "#6cbf43",
+     "#eca944",
+     "#3199e1",
+     "#9e75c7",
+     "#46ba94"
+    ],
+    "dark": [
+     "#0b0e14",
+     "#bfbdb6",
+     "#ea6c73",
+     "#7fd962",
+     "#f9af4f",
+     "#53bdfa",
+     "#cda1fa",
+     "#90e1c6"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Ayu%20Light.json",
+     "size": 540,
+     "sha256": "ed9712dcd3281dac6e5d41b2c484ef8115c9da6d9e757f05c19f0eee7c1f014c"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Ayu.json",
+     "size": 534,
+     "sha256": "7b9c688de91f8dac688acf91e295cbaa65ca122b3122f67619a2fa1e5370cdd4"
+    }
+   ]
+  }
+ ],
+ "fonts": [
+  {
+   "id": "jetbrains-mono",
+   "name": "JetBrains Mono",
+   "family": "JetBrains Mono",
+   "nerd": false,
+   "license": "OFL-1.1",
+   "source": "https://fontsource.org/fonts/jetbrains-mono",
+   "files": [
+    {
+     "name": "400.woff2",
+     "url": "https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.3.0/files/jetbrains-mono-latin-400-normal.woff2",
+     "size": 21168,
+     "sha256": "14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb",
+     "weight": 400
+    },
+    {
+     "name": "700.woff2",
+     "url": "https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.3.0/files/jetbrains-mono-latin-700-normal.woff2",
+     "size": 21908,
+     "sha256": "d0d4e818808f2a0ba39b2b09d1989366f63494e295f003c7ef436697378507e8",
+     "weight": 700
+    }
+   ]
+  },
+  {
+   "id": "fira-code",
+   "name": "Fira Code",
+   "family": "Fira Code",
+   "nerd": false,
+   "license": "OFL-1.1",
+   "source": "https://fontsource.org/fonts/fira-code",
+   "files": [
+    {
+     "name": "400.woff2",
+     "url": "https://cdn.jsdelivr.net/npm/@fontsource/fira-code@5.3.0/files/fira-code-latin-400-normal.woff2",
+     "size": 23312,
+     "sha256": "6dc9da171ccea71d525379ee1cbf51d143e31acac330a251bb71b3d6060e687c",
+     "weight": 400
+    },
+    {
+     "name": "700.woff2",
+     "url": "https://cdn.jsdelivr.net/npm/@fontsource/fira-code@5.3.0/files/fira-code-latin-700-normal.woff2",
+     "size": 23040,
+     "sha256": "987306692df7c81d1ffa1efc98414dfaae10de5e178cfba8e22e92ad9c872e43",
+     "weight": 700
+    }
+   ]
+  },
+  {
+   "id": "ibm-plex-mono",
+   "name": "IBM Plex Mono",
+   "family": "IBM Plex Mono",
+   "nerd": false,
+   "license": "OFL-1.1",
+   "source": "https://fontsource.org/fonts/ibm-plex-mono",
+   "files": [
+    {
+     "name": "400.woff2",
+     "url": "https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.3.0/files/ibm-plex-mono-latin-400-normal.woff2",
+     "size": 14708,
+     "sha256": "08949f728dc52d528e69b1667d15c89a5686a4ee9a296ff90983985f99c380f7",
+     "weight": 400
+    },
+    {
+     "name": "700.woff2",
+     "url": "https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.3.0/files/ibm-plex-mono-latin-700-normal.woff2",
+     "size": 14908,
+     "sha256": "4f84d86cfd060f4ded334358ff8a4c81d4db2ed5addd568359d693f44a87765a",
+     "weight": 700
+    }
+   ]
+  },
+  {
+   "id": "source-code-pro",
+   "name": "Source Code Pro",
+   "family": "Source Code Pro",
+   "nerd": false,
+   "license": "OFL-1.1",
+   "source": "https://fontsource.org/fonts/source-code-pro",
+   "files": [
+    {
+     "name": "400.woff2",
+     "url": "https://cdn.jsdelivr.net/npm/@fontsource/source-code-pro@5.3.0/files/source-code-pro-latin-400-normal.woff2",
+     "size": 11656,
+     "sha256": "75aa8cacfd459d58d7c093f3ff0ab8745cc878dfc93c5d4cda052791aeace878",
+     "weight": 400
+    },
+    {
+     "name": "700.woff2",
+     "url": "https://cdn.jsdelivr.net/npm/@fontsource/source-code-pro@5.3.0/files/source-code-pro-latin-700-normal.woff2",
+     "size": 11540,
+     "sha256": "34faf509fa4130733093f36100f76670ff7d93d4889746de11a62a0fe8d82084",
+     "weight": 700
+    }
+   ]
+  },
+  {
+   "id": "cascadia-code",
+   "name": "Cascadia Code",
+   "family": "Cascadia Code",
+   "nerd": false,
+   "license": "OFL-1.1",
+   "source": "https://fontsource.org/fonts/cascadia-code",
+   "files": [
+    {
+     "name": "400.woff2",
+     "url": "https://cdn.jsdelivr.net/npm/@fontsource/cascadia-code@5.3.0/files/cascadia-code-latin-400-normal.woff2",
+     "size": 29452,
+     "sha256": "923fd5a61f1618f4597422b66172d0d8615577f81eb9382724390ec8cb8bfd5d",
+     "weight": 400
+    },
+    {
+     "name": "700.woff2",
+     "url": "https://cdn.jsdelivr.net/npm/@fontsource/cascadia-code@5.3.0/files/cascadia-code-latin-700-normal.woff2",
+     "size": 30244,
+     "sha256": "db2452f9551ba42a0b2b5ef27a3e9438737922fbdaabd71a2446eaf96fe81ad9",
+     "weight": 700
+    }
+   ]
+  },
+  {
+   "id": "ubuntu-mono",
+   "name": "Ubuntu Mono",
+   "family": "Ubuntu Mono",
+   "nerd": false,
+   "license": "UFL-1.0",
+   "source": "https://fontsource.org/fonts/ubuntu-mono",
+   "files": [
+    {
+     "name": "400.woff2",
+     "url": "https://cdn.jsdelivr.net/npm/@fontsource/ubuntu-mono@5.3.0/files/ubuntu-mono-latin-400-normal.woff2",
+     "size": 27300,
+     "sha256": "afc6d2fb4f49b53ee31b13c23607739d5f2a42dba2f9f72f70144bd3b5b1a8e6",
+     "weight": 400
+    },
+    {
+     "name": "700.woff2",
+     "url": "https://cdn.jsdelivr.net/npm/@fontsource/ubuntu-mono@5.3.0/files/ubuntu-mono-latin-700-normal.woff2",
+     "size": 25748,
+     "sha256": "c8c44cf3c409c4d55324efe420c918684dcd18478abc7aa6ad2c67e3f495888f",
+     "weight": 700
+    }
+   ]
+  },
+  {
+   "id": "meslo-nerd",
+   "name": "MesloLGS Nerd Font",
+   "family": "MesloLGS Nerd Font Mono",
+   "nerd": true,
+   "license": "Apache-2.0",
+   "source": "https://www.nerdfonts.com",
+   "files": [
+    {
+     "name": "400.ttf",
+     "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/patched-fonts/Meslo/S/MesloLGSNerdFontMono-Regular.ttf",
+     "size": 2944312,
+     "sha256": "d14fdc035e41392917b9d665f91af5570b717191b63875532b5bb1b5d5aafcf8",
+     "weight": 400
+    },
+    {
+     "name": "700.ttf",
+     "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/patched-fonts/Meslo/S/MesloLGSNerdFontMono-Bold.ttf",
+     "size": 2961420,
+     "sha256": "640778cf27cf13d44f29d8d7cfddfdbd2979d6fce30732295d9ee5d610b000c4",
+     "weight": 700
+    }
+   ]
+  },
+  {
+   "id": "jetbrains-mono-nerd",
+   "name": "JetBrains Mono Nerd Font",
+   "family": "JetBrainsMono Nerd Font Mono",
+   "nerd": true,
+   "license": "OFL-1.1",
+   "source": "https://www.nerdfonts.com",
+   "files": [
+    {
+     "name": "400.ttf",
+     "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/patched-fonts/JetBrainsMono/Ligatures/JetBrainsMonoNerdFontMono-Regular.ttf",
+     "size": 2573248,
+     "sha256": "f2a5ea6cfab397445ffab00c0370927b66d61e560a05db5db271b42006381c1a",
+     "weight": 400
+    },
+    {
+     "name": "700.ttf",
+     "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/patched-fonts/JetBrainsMono/Ligatures/JetBrainsMonoNerdFontMono-Bold.ttf",
+     "size": 2577016,
+     "sha256": "bfcf9a917276ffc058867d87cbc8a5b2f1ab0f4b710e9170dc02763ccb80bd4b",
+     "weight": 700
+    }
+   ]
+  }
+ ]
+}

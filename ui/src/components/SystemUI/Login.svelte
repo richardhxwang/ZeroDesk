@@ -2,7 +2,7 @@
 	import { onDestroy, onMount, tick } from 'svelte';
 	import AppIcon from '🍎/components/SVG/AppIcon.svelte';
 	import { t } from '🍎/state/i18n.svelte.ts';
-	import { preferences, toggle_lang } from '🍎/state/preferences.svelte.ts';
+	import { LANGS, preferences, type Lang } from '🍎/state/preferences.svelte.ts';
 	import { login, pair_cancel, pair_start, pair_status } from '🍎/state/session.svelte.ts';
 
 	let mode = $state<'pair' | 'token'>('pair');
@@ -94,11 +94,14 @@
 </script>
 
 <div class="screen">
-	<button class="lang" onclick={toggle_lang} aria-label="Language">
-		<span class="indicator" class:right={preferences.lang === 'en'}></span>
-		<span class="opt" class:on={preferences.lang === 'zh'}>中</span>
-		<span class="opt" class:on={preferences.lang === 'en'}>EN</span>
-	</button>
+	<label class="lang">
+		<select value={preferences.lang} aria-label="Language" onchange={(e) => (preferences.lang = e.currentTarget.value as Lang)}>
+			{#each LANGS as l (l.value)}<option value={l.value}>{l.label}</option>{/each}
+		</select>
+		<svg viewBox="0 0 10 14" width="7" height="10" aria-hidden="true"
+			><path d="M2 5l3-3 3 3M2 9l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg
+		>
+	</label>
 
 	<div class="card" class:shake onanimationend={() => (shake = false)}>
 		<AppIcon id="device" size={84} />
@@ -173,48 +176,38 @@
 		}
 	}
 
+	/* a pop-up button like the one in Settings: the native list, our own look */
 	.lang {
 		position: absolute;
 		top: 16px;
 		right: 18px;
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		height: 24px;
-		padding: 2px;
-		border-radius: 12px;
-		background: var(--zd-hover);
-		font-size: 11px;
-		font-weight: 600;
-		color: var(--zd-text);
+		display: inline-flex;
+		align-items: center;
 
-		.opt {
-			position: relative;
-			z-index: 1;
-			min-width: 32px;
-			line-height: 20px;
-			text-align: center;
-			opacity: 0.5;
-			transition: opacity 200ms ease;
+		select {
+			appearance: none;
+			height: 26px;
+			padding: 0 26px 0 12px;
+			border: 0;
+			outline: 0;
+			border-radius: 13px;
+			background: var(--zd-hover);
+			font: inherit;
+			font-size: 12px;
+			font-weight: 500;
+			color: var(--zd-text);
+			cursor: default;
 
-			&.on {
-				opacity: 1;
+			&:focus-visible {
+				box-shadow: 0 0 0 2px var(--zd-hairline-strong);
 			}
 		}
 
-		.indicator {
+		svg {
 			position: absolute;
-			top: 2px;
-			left: 2px;
-			width: calc(50% - 2px);
-			height: 20px;
-			border-radius: 10px;
-			background: var(--zd-control-bg);
-			box-shadow: var(--zd-control-shadow);
-			transition: transform 420ms var(--zd-spring);
-
-			&.right {
-				transform: translateX(100%);
-			}
+			right: 11px;
+			color: var(--zd-text-secondary);
+			pointer-events: none;
 		}
 	}
 

@@ -27,8 +27,9 @@
 	let error = $state('');
 	let content_el = $state<HTMLElement>();
 
-	const zh = $derived(preferences.lang === 'zh');
-	const loc = (a: StoreApp) => (zh ? a.locales?.['zh-CN'] : undefined);
+	// the Store's localized summary and description (its locale keys: zh-CN, ja)
+	const store_locale = $derived(({ zh: 'zh-CN', ja: 'ja' } as Record<string, string>)[preferences.lang]);
+	const loc = (a: StoreApp) => (store_locale ? a.locales?.[store_locale] : undefined);
 	const title = (a: StoreApp) => loc(a)?.title || a.title;
 	const summary = (a: StoreApp) => loc(a)?.summary || a.summary;
 	const description = (a: StoreApp) => loc(a)?.description || a.description;
@@ -48,7 +49,23 @@
 		Emulators: ['模拟器', 'square_stack_3d_up', '#ff6482'],
 		Other: ['其他', 'ellipsis_circle', '#98989d'],
 	};
-	const cat_name = (c: string) => (zh ? (CATS[c]?.[0] ?? c) : c);
+	const CATS_JA: Record<string, string> = {
+		'System Tools': 'システムツール',
+		'Radio & Comms': '無線と通信',
+		Media: 'メディア',
+		'Hardware & IoT': 'ハードウェアと IoT',
+		Games: 'ゲーム',
+		Lifestyle: 'ライフスタイル',
+		Security: 'セキュリティ',
+		Development: '開発',
+		'Creative & Office': 'クリエイティブとオフィス',
+		AI: 'AI',
+		Education: '教育',
+		Emulators: 'エミュレータ',
+		Other: 'その他',
+	};
+	const cat_name = (c: string) =>
+		preferences.lang === 'zh' ? (CATS[c]?.[0] ?? c) : preferences.lang === 'ja' ? (CATS_JA[c] ?? c) : c;
 	const PERMS: Record<string, string> = {
 		network: 'store.perm_network',
 		camera: 'store.perm_camera',

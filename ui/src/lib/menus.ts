@@ -53,7 +53,7 @@ export function build_menus(): MenuDef[] {
 			id: 'window',
 			title: t('menu.window'),
 			items: [
-				{ label: preferences.lang === 'zh' ? '最小化' : 'Minimize', disabled: !active, action: () => active && minimize_app(active), break_after: true },
+				{ label: { zh: '最小化', en: 'Minimize', ja: 'しまう' }[preferences.lang], disabled: !active, action: () => active && minimize_app(active), break_after: true },
 				...(Object.keys(apps_config) as (keyof typeof apps_config)[]).map((id) => ({
 					label: t(apps_config[id].title),
 					action: () => open_app(id),

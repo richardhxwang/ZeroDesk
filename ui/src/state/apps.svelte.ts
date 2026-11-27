@@ -146,6 +146,15 @@ export function open_app(id: AppID) {
 	apps.active = id;
 }
 
+/** The Settings pane to show when Settings next looks (set by open_settings). */
+export const settings_nav = $state({ pane: '' });
+
+/** Open Settings at one pane, e.g. 'terminal' from the Terminal's toolbar. */
+export function open_settings(pane: string) {
+	settings_nav.pane = pane;
+	open_app('settings');
+}
+
 export function close_app(id: AppID) {
 	apps.open[id] = false;
 	apps.minimized[id] = false;
