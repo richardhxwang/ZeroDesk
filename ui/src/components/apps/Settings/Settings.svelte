@@ -5,19 +5,20 @@
 	import 'framework7-icons/css/framework7-icons.css';
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { api, post } from '🍎/lib/api.ts';
-	import { apps } from '🍎/state/apps.svelte.ts';
+	import { apps, settings_nav } from '🍎/state/apps.svelte.ts';
 	import { t, type MsgKey } from '🍎/state/i18n.svelte.ts';
-	import { preferences, type Appearance, type Lang } from '🍎/state/preferences.svelte.ts';
+	import { LANGS, locale_of, preferences, WALLPAPER_TONES, type Appearance, type Lang, type WallpaperTone } from '🍎/state/preferences.svelte.ts';
 	import { logout } from '🍎/state/session.svelte.ts';
 	import AppIcon from '../../SVG/AppIcon.svelte';
 	import Segmented from '../common/Segmented.svelte';
+	import TerminalPane from './TerminalPane.svelte';
 
 	// System Settings, laid out like macOS: a floating sidebar (search, the
 	// device card, panes with colour tiles) and grouped inset cards on the
 	// right. Device settings use the same files and commands as the
 	// CardputerZero launcher (agent /api/settings, /api/wifi/*).
 
-	type Pane = 'wifi' | 'network' | 'battery' | 'appearance' | 'display' | 'sound' | 'ports' | 'datetime' | 'general';
+	type Pane = 'wifi' | 'network' | 'battery' | 'appearance' | 'terminal' | 'display' | 'sound' | 'ports' | 'datetime' | 'general';
 	type NetDev = { device: string; type: string; state: string; connection: string; ip?: string };
 	type State = {
 		hostname: string;
@@ -39,6 +40,7 @@
 		{ id: 'battery', label: 'settings.battery', icon: 'battery_100', tint: '#34c759', group: 0 },
 		{ id: 'general', label: 'settings.general', icon: 'gear_alt_fill', tint: '#8e8e93', group: 1 },
 		{ id: 'appearance', label: 'settings.appearance', icon: 'circle_lefthalf_fill', tint: '#3a3a3c', group: 1 },
+		{ id: 'terminal', label: 'settings.terminal', icon: 'chevron_left_slash_chevron_right', tint: '#3a3a3c', group: 1 },
 		{ id: 'display', label: 'settings.display', icon: 'sun_max_fill', tint: '#0a84ff', group: 1 },
 		{ id: 'sound', label: 'settings.sound', icon: 'speaker_3_fill', tint: '#ff2d55', group: 1 },
 		{ id: 'ports', label: 'settings.ports', icon: 'bolt_fill', tint: '#ff9500', group: 2 },
@@ -47,6 +49,15 @@
 	const TIMEOUTS = [0, 10, 30, 60, 300];
 
 	let pane = $state<Pane>('wifi');
+	$effect(() => {
+		const want = settings_nav.pane as Pane;
+		if (!want || !PANES.some((p) => p.id === want)) return;
+		pane = want;
+		query = '';
+		show_list = false;
+		settings_nav.pane = '';
+	});
+	const WALLPAPERS: ('device' | WallpaperTone)[] = ['device', ...(Object.keys(WALLPAPER_TONES) as WallpaperTone[])];
 	let query = $state('');
 	// last known state paints the window at once; a refresh follows (lib/swr)
 	let s = $state<State | null>(cached<State>('settings') ?? null);
@@ -177,7 +188,11 @@
 	// ---- formatting ----
 	const fmt_status = (v: string) =>
 		({ Charging: t('settings.charging'), Discharging: t('settings.discharging'), Full: t('settings.charged'), 'Not charging': t('settings.not_charging') })[v] ?? v;
-	const fmt_health = (v: string) => (preferences.lang === 'zh' ? ({ Good: '良好', Overheat: '过热', Dead: '损坏', 'Over voltage': '过压', Cold: '过冷' } as Record<string, string>)[v] ?? v : v);
+	const HEALTH: Partial<Record<Lang, Record<string, string>>> = {
+		zh: { Good: '良好', Overheat: '过热', Dead: '损坏', 'Over voltage': '过压', Cold: '过冷' },
+		ja: { Good: '良好', Overheat: '過熱', Dead: '故障', 'Over voltage': '過電圧', Cold: '低温' },
+	};
+	const fmt_health = (v: string) => HEALTH[preferences.lang]?.[v] ?? v;
 	// Linux's Etc/GMT-8 means UTC+8 (POSIX signs are inverted)
 	const fmt_tz = (z = '') => {
 		const m = /^Etc\/GMT([+-])(\d+)$/.exec(z);
@@ -217,6 +232,7 @@
 				<button class="item" class:active={pane === p.id} onclick={() => ((pane = p.id), (show_list = false))}>
 					{@render tile(p.icon, p.tint)}
 					<span>{t(p.label)}</span>
+					{#if p.id === 'terminal' && !preferences.seen_terminal_settings}<span class="new-dot" aria-hidden="true"></span>{/if}
 				</button>
 			{/each}
 		</nav>
@@ -231,7 +247,9 @@
 		</header>
 
 		<div class="content">
-			{#if !s}
+			{#if pane === 'terminal'}
+				<TerminalPane />
+			{:else if !s}
 				<!-- first open without any data yet: the final layout, values blank -->
 				<div class="hero">
 					{@render tile(current.icon, current.tint, 44)}
@@ -337,14 +355,12 @@
 					</div>
 					<div class="row">
 						<span class="grow">{t('settings.language')}</span>
-						<Segmented
-							options={[
-								{ value: 'zh' as Lang, label: '中文' },
-								{ value: 'en' as Lang, label: 'English' },
-							]}
-							value={preferences.lang}
-							onchange={(v) => (preferences.lang = v)}
-						/>
+						<label class="popup">
+							<select value={preferences.lang} aria-label={t('settings.language')} onchange={(e) => (preferences.lang = e.currentTarget.value as Lang)}>
+								{#each LANGS as l (l.value)}<option value={l.value}>{l.label}</option>{/each}
+							</select>
+							<i class="f7-icons" aria-hidden="true">chevron_up_chevron_down</i>
+						</label>
 					</div>
 					<div class="row">
 						<span class="grow">{t('settings.motion')}</span>
@@ -352,6 +368,19 @@
 					</div>
 				</div>
 				{#if preferences.appearance === 'auto'}<p class="foot">{t('settings.auto_note')}</p>{/if}
+				<h2>{t('settings.wallpaper')}</h2>
+				<div class="walls">
+					{#each WALLPAPERS as w (w)}
+						<button class="wall" class:on={preferences.wallpaper === w} onclick={() => (preferences.wallpaper = w)}>
+							{#if w === 'device'}
+								<span class="chip device-wall" style:background-image="url(/api/wallpaper)"></span>
+							{:else}
+								<span class="chip" style:background={WALLPAPER_TONES[w][preferences.theme.scheme === 'dark' ? 1 : 0]}></span>
+							{/if}
+							<small>{w === 'device' ? t('settings.wallpaper_device') : t(`settings.tone_${w}` as MsgKey)}</small>
+						</button>
+					{/each}
+				</div>
 			{:else if pane === 'display'}
 				<div class="card">
 					<div class="row tall">
@@ -422,7 +451,7 @@
 					<div class="row">
 						<span class="grow">{t('settings.datetime')}</span>
 						{#if s.time.ntp}
-							<span class="value">{new Date(s.time.now).toLocaleString(preferences.lang === 'zh' ? 'zh-CN' : 'en-US')}</span>
+							<span class="value">{new Date(s.time.now).toLocaleString(locale_of())}</span>
 						{:else}
 							<input class="field" type="datetime-local" bind:value={manual} />
 							<button class="btn" disabled={busy === 'time'} onclick={() => set('time', manual.replace('T', ' '))}>{t('settings.set')}</button>
@@ -590,6 +619,95 @@
 		&.active {
 			background: var(--zd-selected);
 			font-weight: 600;
+		}
+	}
+
+	/* a macOS pop-up button: the native list (works on phones), our own look */
+	.popup {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+
+		select {
+			appearance: none;
+			height: 24px;
+			padding: 0 26px 0 10px;
+			border: 0;
+			outline: 0;
+			border-radius: 6px;
+			background: var(--zd-control-bg);
+			box-shadow: var(--zd-control-shadow);
+			font: inherit;
+			font-size: 13px;
+			color: var(--zd-text);
+			cursor: default;
+
+			&:focus-visible {
+				box-shadow:
+					var(--zd-control-shadow),
+					0 0 0 2px var(--zd-hairline-strong);
+			}
+		}
+
+		i {
+			position: absolute;
+			right: 8px;
+			font-size: 10px;
+			font-weight: 600;
+			color: var(--zd-text-secondary);
+			pointer-events: none;
+		}
+	}
+
+	.new-dot {
+		width: 6px;
+		height: 6px;
+		margin-left: auto;
+		margin-right: 2px;
+		border-radius: 50%;
+		background: var(--zd-text-tertiary);
+	}
+
+	.walls {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+		gap: 12px 8px;
+		padding: 4px 2px;
+	}
+
+	.wall {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 6px;
+		padding: 0;
+		min-width: 0;
+
+		.chip {
+			width: 100%;
+			aspect-ratio: 16 / 10;
+			border-radius: 8px;
+			background-size: cover;
+			background-position: center;
+			background-color: var(--zd-wallpaper);
+			box-shadow: inset 0 0 0 0.5px var(--zd-hairline-strong);
+			transition: box-shadow 180ms ease;
+		}
+
+		&.on .chip {
+			box-shadow:
+				0 0 0 2px var(--zd-window-bg),
+				0 0 0 4px var(--zd-text);
+		}
+
+		/* longer names (グラファイト) wrap rather than being cut off */
+		small {
+			max-width: 100%;
+			font-size: 11px;
+			line-height: 1.25;
+			text-align: center;
+			overflow-wrap: anywhere;
+			color: var(--zd-text-secondary);
 		}
 	}
 

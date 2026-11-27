@@ -9,7 +9,7 @@
 	import { api, post } from '🍎/lib/api.ts';
 	import { t } from '🍎/state/i18n.svelte.ts';
 	import { apps } from '🍎/state/apps.svelte.ts';
-	import { preferences } from '🍎/state/preferences.svelte.ts';
+	import { locale_of, preferences } from '🍎/state/preferences.svelte.ts';
 	import { fmt_time, list_audio, type Track } from '../Music/library.ts';
 
 	// Voice Memos for the Zero, laid out like the macOS app: recordings list on
@@ -49,7 +49,7 @@
 	const dark = $derived(preferences.theme.scheme === 'dark');
 	const sel = $derived(items.find((x) => x.path === selected) ?? null);
 	const shown = $derived(query.trim() ? items.filter((x) => x.title.toLowerCase().includes(query.trim().toLowerCase())) : items);
-	const locale = $derived(preferences.lang === 'zh' ? 'zh-CN' : 'en-US');
+	const locale = $derived(locale_of(preferences.lang));
 	const day_fmt = $derived(new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }));
 	const full_fmt = $derived(new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }));
 

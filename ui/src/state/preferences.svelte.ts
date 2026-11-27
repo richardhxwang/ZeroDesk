@@ -8,9 +8,33 @@ function scheme_for_time(d = new Date()): 'light' | 'dark' {
 
 export type Scheme = 'light' | 'dark';
 export type Appearance = 'auto' | 'light' | 'dark';
-export type Lang = 'zh' | 'en';
+export type Lang = 'zh' | 'en' | 'ja';
 
+/** The interface languages, each named in itself, in the order they cycle. */
+export const LANGS: { value: Lang; label: string }[] = [
+	{ value: 'zh', label: '简体中文' },
+	{ value: 'en', label: 'English' },
+	{ value: 'ja', label: '日本語' },
+];
 
+/** The locale for dates and numbers in the current language. */
+export function locale_of(lang: Lang = preferences.lang): string {
+	return { zh: 'zh-CN', en: 'en-US', ja: 'ja-JP' }[lang] ?? 'en-US';
+}
+export type CursorStyle = 'block' | 'bar' | 'underline';
+
+/** Desktop colours used instead of the device's wallpaper: [light, dark]. */
+export const WALLPAPER_TONES = {
+	graphite: ['#c9cacc', '#1c1c1e'],
+	stone: ['#d4d1cb', '#262523'],
+	sand: ['#dccfb9', '#2a251e'],
+	clay: ['#d2ab95', '#2e221d'],
+	sage: ['#b9c3b0', '#1f241e'],
+	rose: ['#d8bcb6', '#2b2123'],
+} as const;
+export type WallpaperTone = keyof typeof WALLPAPER_TONES;
+
+// Keys stay flat: persisted() merges a stored value with these defaults one level deep.
 export const preferences = persisted('zerodesk:preferences', {
 	reduced_motion: matchMedia('(prefers-reduced-motion)').matches as boolean,
 	/** what the user picked; `theme.scheme` is the scheme actually shown */
@@ -19,6 +43,19 @@ export const preferences = persisted('zerodesk:preferences', {
 	lang: 'en' as Lang,
 	device_scale: 3 as number,
 	screen_smooth: true as boolean,
+	/** 'device' (the CardputerZero's own wallpaper) or a plain tone */
+	wallpaper: 'device' as 'device' | WallpaperTone,
+	/** 'zerodesk' follows light and dark; otherwise a downloaded scheme's id */
+	term_theme: 'zerodesk' as string,
+	/** 'system', 'local' (term_font_local) or a downloaded font's id */
+	term_font: 'system' as string,
+	/** the name of a font installed on this computer */
+	term_font_local: '' as string,
+	term_font_size: 13 as number,
+	term_cursor: 'block' as CursorStyle,
+	term_cursor_blink: true as boolean,
+	/** Terminal settings were opened once (the sidebar dot goes away) */
+	seen_terminal_settings: false as boolean,
 });
 
 function apply_scheme(next: Scheme) {
@@ -47,7 +84,7 @@ $effect.root(() => {
 		document.documentElement.style.colorScheme = preferences.theme.scheme;
 	});
 	$effect(() => {
-		document.documentElement.lang = preferences.lang === 'zh' ? 'zh-CN' : 'en';
+		document.documentElement.lang = { zh: 'zh-CN', en: 'en', ja: 'ja' }[preferences.lang] ?? 'en';
 	});
 });
 
@@ -61,6 +98,8 @@ export function toggle_scheme() {
 	preferences.appearance = preferences.theme.scheme === 'light' ? 'dark' : 'light';
 }
 
+/** Switch to the next language (menus and the login screen). */
 export function toggle_lang() {
-	preferences.lang = preferences.lang === 'zh' ? 'en' : 'zh';
+	const i = LANGS.findIndex((l) => l.value === preferences.lang);
+	preferences.lang = LANGS[(i + 1) % LANGS.length].value;
 }

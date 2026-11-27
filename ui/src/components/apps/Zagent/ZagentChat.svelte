@@ -6,7 +6,7 @@
 	// in the same conversation the device shows.
 
 	let { lang = 'zh' }: { lang?: string } = $props();
-	const L = (en: string, zh: string) => (lang === 'en' ? en : zh);
+	const L = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 
 	type Step = { kind: 'tool' | 'thinking'; name?: string; detail?: string; output?: string; text?: string };
 	type Approval = { id: string; tool: string; summary: string; answer?: string };
