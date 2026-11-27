@@ -3,6 +3,7 @@ import { apps, close_app, minimize_app, open_app, title_of } from '🍎/state/ap
 import { t } from '🍎/state/i18n.svelte.ts';
 import { preferences, toggle_lang, toggle_scheme } from '🍎/state/preferences.svelte.ts';
 import { logout } from '🍎/state/session.svelte.ts';
+import { IS_MAC, terminal } from '🍎/state/terminal.svelte.ts';
 
 export type MenuItem = {
 	label: string;
@@ -49,6 +50,7 @@ export function build_menus(): MenuDef[] {
 				},
 			],
 		},
+		...(active === 'terminal' && terminal.commands ? [shell_menu(terminal.commands)] : []),
 		{
 			id: 'window',
 			title: t('menu.window'),
@@ -61,4 +63,20 @@ export function build_menus(): MenuDef[] {
 			],
 		},
 	];
+}
+
+/** The Terminal's Shell menu, with the shortcuts it handles itself. */
+function shell_menu(c: NonNullable<typeof terminal.commands>): MenuDef {
+	const k = (mac: string, other: string) => (IS_MAC ? mac : other);
+	return {
+		id: 'shell',
+		title: t('menu.shell'),
+		items: [
+			{ label: t('term.new_tab'), action: c.new_tab, shortcut: k('⌥T', 'Ctrl+Shift+T'), break_after: true },
+			{ label: t('term.split_right'), action: () => c.split('row'), shortcut: k('⌘D', 'Ctrl+Shift+D') },
+			{ label: t('term.split_down'), action: () => c.split('col'), shortcut: k('⇧⌘D', 'Ctrl+Shift+E') },
+			{ label: t('term.close_pane'), action: c.close_pane, break_after: true },
+			{ label: t('term.find'), action: c.find, shortcut: k('⌘F', 'Ctrl+Shift+F') },
+		],
+	};
 }
