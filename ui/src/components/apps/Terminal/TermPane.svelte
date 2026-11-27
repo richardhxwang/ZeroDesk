@@ -296,7 +296,6 @@
 				// from the block's top left to its bottom right first; a move replaces the
 				// selection with the match anyway.
 				if (step && block_drag && tm.hasSelection()) {
-					block_drag = false; // only the selection that drag made
 					const { start, end } = tm.getSelectionPosition()!;
 					const l = Math.min(start.x, end.x);
 					const r = Math.max(start.x, end.x);
@@ -318,6 +317,8 @@
 				// so a second try starts from the far end and wraps.
 				if (!go() && step) go();
 				searched = q;
+				// any search replaces the selection: the block fix is for the drag's own one only
+				block_drag = false;
 			},
 			clear_find: () => {
 				searched = undefined;

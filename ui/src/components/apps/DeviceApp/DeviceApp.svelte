@@ -19,6 +19,14 @@
 	/** a state of ours to show, kept as a key so it follows the language */
 	let notice = $state<'vapp.on_zero' | 'vapp.zero_only' | null>(null);
 	const message = $derived(error || (notice ? t(notice) : ''));
+	// Only the newest request may change what the window says: an older reply
+	// that arrives late must not replace the outcome of a newer one.
+	let newest = 0;
+	function say(req: number, err: string, note: typeof notice = null) {
+		if (req !== newest) return;
+		error = err;
+		notice = note;
+	}
 	let status = $state<ScreenStatus>('connecting');
 	let show_keys = $state(false);
 	let view = $state<ScreenView>();
@@ -33,6 +41,7 @@
 
 	onMount(async () => {
 		const closed = closed_since(window_id);
+		const req = ++newest;
 		try {
 			const s = await post<{ id: string }>('/api/vapps/start', { id: app.app });
 			if (destroyed) {
@@ -60,11 +69,11 @@
 			if (e instanceof ApiError && e.status === 409) {
 				if (destroyed) return;
 				// closed meanwhile: do not start it on the Zero; reopened, the toolbar's button still can
-				if (closed()) (error = ''), (notice = 'vapp.zero_only');
+				if (closed()) say(req, '', 'vapp.zero_only');
 				else await open_on_device();
 				return;
 			}
-			error = (e as Error).message;
+			say(req, (e as Error).message);
 		}
 	});
 
@@ -81,19 +90,19 @@
 
 	async function open_on_device() {
 		const closed = closed_since(window_id);
+		const req = ++newest;
 		try {
 			await post('/api/apps/open', { id: app.app });
 			if (destroyed) return;
 			// closed (and maybe reopened) meanwhile: leave the windows as they are
 			if (closed()) {
-				error = '';
-				notice = 'vapp.on_zero';
+				say(req, '', 'vapp.on_zero');
 				return;
 			}
 			open_app('device');
 			close_app(window_id);
 		} catch (e) {
-			if (!destroyed) error = (e as Error).message;
+			if (!destroyed) say(req, (e as Error).message);
 		}
 	}
 
