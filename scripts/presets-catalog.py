@@ -27,12 +27,14 @@ SCHEMES_SOURCE = "https://github.com/mbadolato/iTerm2-Color-Schemes"
 THEMES = [
     # (id, display name, light variant file, dark variant file) in windowsterminal/.
     # A family with both follows Appearance like the built-in scheme.
+    # Solarized first: agnoster, the classic zsh theme that needs a Powerline
+    # font, is made for Solarized (issue #3)
+    ("solarized", "Solarized", "iTerm2 Solarized Light", "iTerm2 Solarized Dark"),
     ("dracula", "Dracula", None, "Dracula"),
     ("nord", "Nord", "Nord Light", "Nord"),
     ("catppuccin", "Catppuccin", "Catppuccin Latte", "Catppuccin Mocha"),
     ("tokyonight", "Tokyo Night", "TokyoNight Day", "TokyoNight Storm"),
     ("gruvbox", "Gruvbox", "Gruvbox Light", "Gruvbox Dark"),
-    ("solarized", "Solarized", "iTerm2 Solarized Light", "iTerm2 Solarized Dark"),
     ("one-half", "One Half", "One Half Light", "One Half Dark"),
     ("rose-pine", "Rosé Pine", "Rose Pine Dawn", "Rose Pine"),
     ("github", "GitHub", "GitHub Light Default", "GitHub Dark Default"),
@@ -40,6 +42,8 @@ THEMES = [
     ("everforest", "Everforest", "Everforest Light Med", "Everforest Dark Med"),
     ("monokai-pro", "Monokai Pro", "Monokai Pro Light", "Monokai Pro"),
     ("ayu", "Ayu", "Ayu Light", "Ayu"),
+    ("apple", "Apple System Colors", "Apple System Colors Light", "Apple System Colors"),
+    ("night-owl", "Night Owl", "Night Owlish Light", "Night Owl"),
 ]
 
 # Fonts. Fontsource (OFL) serves Latin subsets as small woff2 files; the Nerd
@@ -48,6 +52,16 @@ THEMES = [
 FONTSOURCE = "5.3.0"
 NERD = "v3.5.1"
 FONTS = [
+    # The Nerd Fonts first: MesloLGS is what Powerlevel10k recommends, and both
+    # carry the Powerline glyphs zsh prompt themes draw with (issue #3).
+    ("meslo-nerd", "MesloLGS Nerd Font", "MesloLGS Nerd Font Mono", True,
+     [(w, f"https://raw.githubusercontent.com/ryanoasis/nerd-fonts/{NERD}/patched-fonts/Meslo/S/MesloLGSNerdFontMono-{s}.ttf")
+      for w, s in ((400, "Regular"), (700, "Bold"))],
+     "Apache-2.0", "https://www.nerdfonts.com"),
+    ("jetbrains-mono-nerd", "JetBrains Mono Nerd Font", "JetBrainsMono Nerd Font Mono", True,
+     [(w, f"https://raw.githubusercontent.com/ryanoasis/nerd-fonts/{NERD}/patched-fonts/JetBrainsMono/Ligatures/JetBrainsMonoNerdFontMono-{s}.ttf")
+      for w, s in ((400, "Regular"), (700, "Bold"))],
+     "OFL-1.1", "https://www.nerdfonts.com"),
     # (id, display name, css family, nerd, [(weight, url)], license, source)
     *[
         (fid, name, name, False,
@@ -62,14 +76,6 @@ FONTS = [
             ("ubuntu-mono", "Ubuntu Mono", "UFL-1.0"),
         ]
     ],
-    ("meslo-nerd", "MesloLGS Nerd Font", "MesloLGS Nerd Font Mono", True,
-     [(w, f"https://raw.githubusercontent.com/ryanoasis/nerd-fonts/{NERD}/patched-fonts/Meslo/S/MesloLGSNerdFontMono-{s}.ttf")
-      for w, s in ((400, "Regular"), (700, "Bold"))],
-     "Apache-2.0", "https://www.nerdfonts.com"),
-    ("jetbrains-mono-nerd", "JetBrains Mono Nerd Font", "JetBrainsMono Nerd Font Mono", True,
-     [(w, f"https://raw.githubusercontent.com/ryanoasis/nerd-fonts/{NERD}/patched-fonts/JetBrainsMono/Ligatures/JetBrainsMonoNerdFontMono-{s}.ttf")
-      for w, s in ((400, "Regular"), (700, "Bold"))],
-     "OFL-1.1", "https://www.nerdfonts.com"),
 ]
 
 

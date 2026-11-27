@@ -1,6 +1,48 @@
 {
  "themes": [
   {
+   "id": "solarized",
+   "name": "Solarized",
+   "preview": {
+    "light": [
+     "#fdf6e3",
+     "#657b83",
+     "#dc322f",
+     "#859900",
+     "#b58900",
+     "#268bd2",
+     "#d33682",
+     "#2aa198"
+    ],
+    "dark": [
+     "#002b36",
+     "#839496",
+     "#dc322f",
+     "#859900",
+     "#b58900",
+     "#268bd2",
+     "#d33682",
+     "#2aa198"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/iTerm2%20Solarized%20Light.json",
+     "size": 553,
+     "sha256": "522c87646ca6d476086234ab306342c1572e72d47077777da36421d3ab53ce2c"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/iTerm2%20Solarized%20Dark.json",
+     "size": 552,
+     "sha256": "59ba8fc72db6e818e542c25883e819423363daf11733d653c7e855b107816e8f"
+    }
+   ]
+  },
+  {
    "id": "dracula",
    "name": "Dracula",
    "preview": {
@@ -191,48 +233,6 @@
      "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Gruvbox%20Dark.json",
      "size": 543,
      "sha256": "629123a65b64e129732c0918bc038a62786b36e27123efe93fd07fc89d641b89"
-    }
-   ]
-  },
-  {
-   "id": "solarized",
-   "name": "Solarized",
-   "preview": {
-    "light": [
-     "#fdf6e3",
-     "#657b83",
-     "#dc322f",
-     "#859900",
-     "#b58900",
-     "#268bd2",
-     "#d33682",
-     "#2aa198"
-    ],
-    "dark": [
-     "#002b36",
-     "#839496",
-     "#dc322f",
-     "#859900",
-     "#b58900",
-     "#268bd2",
-     "#d33682",
-     "#2aa198"
-    ]
-   },
-   "license": "MIT",
-   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
-   "files": [
-    {
-     "name": "light.json",
-     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/iTerm2%20Solarized%20Light.json",
-     "size": 553,
-     "sha256": "522c87646ca6d476086234ab306342c1572e72d47077777da36421d3ab53ce2c"
-    },
-    {
-     "name": "dark.json",
-     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/iTerm2%20Solarized%20Dark.json",
-     "size": 552,
-     "sha256": "59ba8fc72db6e818e542c25883e819423363daf11733d653c7e855b107816e8f"
     }
    ]
   },
@@ -529,9 +529,141 @@
      "sha256": "7b9c688de91f8dac688acf91e295cbaa65ca122b3122f67619a2fa1e5370cdd4"
     }
    ]
+  },
+  {
+   "id": "apple",
+   "name": "Apple System Colors",
+   "preview": {
+    "light": [
+     "#feffff",
+     "#000000",
+     "#cc372e",
+     "#26a439",
+     "#cdac08",
+     "#0869cb",
+     "#9647bf",
+     "#479ec2"
+    ],
+    "dark": [
+     "#1e1e1e",
+     "#ffffff",
+     "#cc372e",
+     "#26a439",
+     "#cdac08",
+     "#0869cb",
+     "#9647bf",
+     "#479ec2"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Apple%20System%20Colors%20Light.json",
+     "size": 556,
+     "sha256": "6b64dea04c39e1b97fa5eb8f6d3c9a16fffe0b6801dfac0f8172c389cad8dedb"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Apple%20System%20Colors.json",
+     "size": 550,
+     "sha256": "f8848c6ab1615a03540f94cb47f72c2fb40140f0a648ffdf3997905482000e16"
+    }
+   ]
+  },
+  {
+   "id": "night-owl",
+   "name": "Night Owl",
+   "preview": {
+    "light": [
+     "#ffffff",
+     "#403f53",
+     "#d3423e",
+     "#2aa298",
+     "#daaa01",
+     "#4876d6",
+     "#403f53",
+     "#08916a"
+    ],
+    "dark": [
+     "#011627",
+     "#d6deeb",
+     "#ef5350",
+     "#22da6e",
+     "#addb67",
+     "#82aaff",
+     "#c792ea",
+     "#21c7a8"
+    ]
+   },
+   "license": "MIT",
+   "source": "https://github.com/mbadolato/iTerm2-Color-Schemes",
+   "files": [
+    {
+     "name": "light.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Night%20Owlish%20Light.json",
+     "size": 549,
+     "sha256": "b9e9009492218bcdb02292a38612fa501be1f9e6e34947cb6a2b809f44bc1bfa"
+    },
+    {
+     "name": "dark.json",
+     "url": "https://raw.githubusercontent.com/mbadolato/iTerm2-Color-Schemes/39d0d4d40d14e9955cad02aa869ae63e5372d646/windowsterminal/Night%20Owl.json",
+     "size": 540,
+     "sha256": "aef72648feaf51f9f18a2ae047e43698cfa112e0b7861c72f5dd13f767d15344"
+    }
+   ]
   }
  ],
  "fonts": [
+  {
+   "id": "meslo-nerd",
+   "name": "MesloLGS Nerd Font",
+   "family": "MesloLGS Nerd Font Mono",
+   "nerd": true,
+   "license": "Apache-2.0",
+   "source": "https://www.nerdfonts.com",
+   "files": [
+    {
+     "name": "400.ttf",
+     "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/patched-fonts/Meslo/S/MesloLGSNerdFontMono-Regular.ttf",
+     "size": 2944312,
+     "sha256": "d14fdc035e41392917b9d665f91af5570b717191b63875532b5bb1b5d5aafcf8",
+     "weight": 400
+    },
+    {
+     "name": "700.ttf",
+     "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/patched-fonts/Meslo/S/MesloLGSNerdFontMono-Bold.ttf",
+     "size": 2961420,
+     "sha256": "640778cf27cf13d44f29d8d7cfddfdbd2979d6fce30732295d9ee5d610b000c4",
+     "weight": 700
+    }
+   ]
+  },
+  {
+   "id": "jetbrains-mono-nerd",
+   "name": "JetBrains Mono Nerd Font",
+   "family": "JetBrainsMono Nerd Font Mono",
+   "nerd": true,
+   "license": "OFL-1.1",
+   "source": "https://www.nerdfonts.com",
+   "files": [
+    {
+     "name": "400.ttf",
+     "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/patched-fonts/JetBrainsMono/Ligatures/JetBrainsMonoNerdFontMono-Regular.ttf",
+     "size": 2573248,
+     "sha256": "f2a5ea6cfab397445ffab00c0370927b66d61e560a05db5db271b42006381c1a",
+     "weight": 400
+    },
+    {
+     "name": "700.ttf",
+     "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/patched-fonts/JetBrainsMono/Ligatures/JetBrainsMonoNerdFontMono-Bold.ttf",
+     "size": 2577016,
+     "sha256": "bfcf9a917276ffc058867d87cbc8a5b2f1ab0f4b710e9170dc02763ccb80bd4b",
+     "weight": 700
+    }
+   ]
+  },
   {
    "id": "jetbrains-mono",
    "name": "JetBrains Mono",
@@ -672,54 +804,6 @@
      "url": "https://cdn.jsdelivr.net/npm/@fontsource/ubuntu-mono@5.3.0/files/ubuntu-mono-latin-700-normal.woff2",
      "size": 25748,
      "sha256": "c8c44cf3c409c4d55324efe420c918684dcd18478abc7aa6ad2c67e3f495888f",
-     "weight": 700
-    }
-   ]
-  },
-  {
-   "id": "meslo-nerd",
-   "name": "MesloLGS Nerd Font",
-   "family": "MesloLGS Nerd Font Mono",
-   "nerd": true,
-   "license": "Apache-2.0",
-   "source": "https://www.nerdfonts.com",
-   "files": [
-    {
-     "name": "400.ttf",
-     "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/patched-fonts/Meslo/S/MesloLGSNerdFontMono-Regular.ttf",
-     "size": 2944312,
-     "sha256": "d14fdc035e41392917b9d665f91af5570b717191b63875532b5bb1b5d5aafcf8",
-     "weight": 400
-    },
-    {
-     "name": "700.ttf",
-     "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/patched-fonts/Meslo/S/MesloLGSNerdFontMono-Bold.ttf",
-     "size": 2961420,
-     "sha256": "640778cf27cf13d44f29d8d7cfddfdbd2979d6fce30732295d9ee5d610b000c4",
-     "weight": 700
-    }
-   ]
-  },
-  {
-   "id": "jetbrains-mono-nerd",
-   "name": "JetBrains Mono Nerd Font",
-   "family": "JetBrainsMono Nerd Font Mono",
-   "nerd": true,
-   "license": "OFL-1.1",
-   "source": "https://www.nerdfonts.com",
-   "files": [
-    {
-     "name": "400.ttf",
-     "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/patched-fonts/JetBrainsMono/Ligatures/JetBrainsMonoNerdFontMono-Regular.ttf",
-     "size": 2573248,
-     "sha256": "f2a5ea6cfab397445ffab00c0370927b66d61e560a05db5db271b42006381c1a",
-     "weight": 400
-    },
-    {
-     "name": "700.ttf",
-     "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/patched-fonts/JetBrainsMono/Ligatures/JetBrainsMonoNerdFontMono-Bold.ttf",
-     "size": 2577016,
-     "sha256": "bfcf9a917276ffc058867d87cbc8a5b2f1ab0f4b710e9170dc02763ccb80bd4b",
      "weight": 700
     }
    ]

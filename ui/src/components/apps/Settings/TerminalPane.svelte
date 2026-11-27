@@ -269,6 +269,8 @@
 	.theme {
 		display: flex;
 		flex-direction: column;
+		/* buttons centre their content: keep swatches level when a name wraps */
+		justify-content: flex-start;
 		align-items: stretch;
 		gap: 6px;
 		min-width: 0;
