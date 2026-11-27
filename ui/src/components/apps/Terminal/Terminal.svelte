@@ -6,7 +6,7 @@
 	import { IS_MAC, terminal } from '🍎/state/terminal.svelte.ts';
 	import Toolbar from '../common/Toolbar.svelte';
 	import ToolButton from '../common/ToolButton.svelte';
-	import { close, new_pane, panes_of, split, type Layout } from './layout.ts';
+	import { close, new_pane, panes_of, split, tile, type Layout } from './layout.ts';
 	import TermPane, { type PaneApi } from './TermPane.svelte';
 
 	// The Terminal window: tabs, each holding one or more panes in splits
@@ -119,26 +119,6 @@
 	onDestroy(() => (terminal.commands = null));
 </script>
 
-{#snippet node(tab_i: number, tab_id: number, l: Layout)}
-	{#if 'pane' in l}
-		{@const pane = l.pane}
-		<TermPane
-			focused={tab_i === current && tabs[tab_i].focused === pane}
-			onfocus={() => (tabs[tab_i].focused = pane)}
-			onexit={() => remove_pane(tab_id, pane)}
-			ontitle={(s) => (titles[pane] = s)}
-			onresults={(index, count) => tab_i === current && tabs[tab_i].focused === pane && (result = { index, count })}
-			register={(a) => (a ? apis.set(pane, a) : apis.delete(pane))}
-			onshortcut={shortcut}
-		/>
-	{:else}
-		<div class="split {l.dir}">
-			<div class="cell">{@render node(tab_i, tab_id, l.a)}</div>
-			<span class="divider"></span>
-			<div class="cell">{@render node(tab_i, tab_id, l.b)}</div>
-		</div>
-	{/if}
-{/snippet}
 
 <div class="terminal">
 	<Toolbar title={t('app.terminal')} subtitle={title_of(tab.focused)}>
@@ -184,7 +164,26 @@
 
 	<div class="body">
 		{#each tabs as tb, i (tb.id)}
-			<div class="tab-body" class:hidden={i !== current}>{@render node(i, tb.id, tb.layout)}</div>
+			{@const t_ = tile(tb.layout)}
+			<div class="tab-body" class:hidden={i !== current}>
+				<!-- One keyed list for all panes: a split or close moves panes, never recreates their shells. -->
+				{#each t_.panes as { pane, rect } (pane)}
+					<div class="cell" style:left="{rect.x * 100}%" style:top="{rect.y * 100}%" style:width="{rect.w * 100}%" style:height="{rect.h * 100}%">
+						<TermPane
+							focused={i === current && tb.focused === pane}
+							onfocus={() => (tabs[i].focused = pane)}
+							onexit={() => remove_pane(tb.id, pane)}
+							ontitle={(s) => (titles[pane] = s)}
+							onresults={(index, count) => i === current && tb.focused === pane && (result = { index, count })}
+							register={(a) => (a ? apis.set(pane, a) : apis.delete(pane))}
+							onshortcut={shortcut}
+						/>
+					</div>
+				{/each}
+				{#each t_.dividers as d}
+					<span class="divider {d.dir}" style:left="{d.rect.x * 100}%" style:top="{d.rect.y * 100}%" style:width={d.dir === 'col' ? `${d.rect.w * 100}%` : null} style:height={d.dir === 'row' ? `${d.rect.h * 100}%` : null}></span>
+				{/each}
+			</div>
 		{/each}
 
 		{#if find_open}
@@ -292,7 +291,6 @@
 	.tab-body {
 		position: absolute;
 		inset: 0;
-		display: flex;
 
 		&.hidden {
 			visibility: hidden;
@@ -300,33 +298,24 @@
 		}
 	}
 
-	.split {
-		flex: 1;
-		min-width: 0;
-		min-height: 0;
-		display: flex;
-
-		&.col {
-			flex-direction: column;
-		}
-	}
-
 	.cell {
-		flex: 1;
-		min-width: 0;
-		min-height: 0;
+		position: absolute;
 		display: flex;
 	}
 
 	.divider {
-		flex: none;
+		position: absolute;
+		z-index: 1;
 		background: var(--zd-hairline-strong);
+		pointer-events: none;
 
-		.row > & {
+		&.row {
 			width: 1px;
+			translate: -0.5px 0;
 		}
-		.col > & {
+		&.col {
 			height: 1px;
+			translate: 0 -0.5px;
 		}
 	}
 
