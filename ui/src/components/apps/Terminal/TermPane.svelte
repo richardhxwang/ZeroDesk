@@ -296,6 +296,7 @@
 				// from the block's top left to its bottom right first; a move replaces the
 				// selection with the match anyway.
 				if (step && block_drag && tm.hasSelection()) {
+					block_drag = false; // only the selection that drag made
 					const { start, end } = tm.getSelectionPosition()!;
 					const l = Math.min(start.x, end.x);
 					const r = Math.max(start.x, end.x);
@@ -311,8 +312,11 @@
 					addon._cachedSearchTerm = q;
 					addon._lastSearchOptions = opts;
 				}
-				if (step === 'prev') search.findPrevious(q, opts);
-				else search.findNext(q, opts);
+				const go = () => (step === 'prev' ? search!.findPrevious(q, opts) : search!.findNext(q, opts));
+				// The addon does not wrap when it starts on the last row going up (or the
+				// first going down). A move that found nothing has cleared the selection,
+				// so a second try starts from the far end and wraps.
+				if (!go() && step) go();
 				searched = q;
 			},
 			clear_find: () => {
