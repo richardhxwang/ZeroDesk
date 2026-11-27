@@ -51,6 +51,8 @@
 	let ro: ResizeObserver | undefined;
 	let refit: () => void = () => {};
 	let search: import('@xterm/addon-search').SearchAddon | undefined;
+	// set on destroy: the xterm modules load asynchronously and may arrive after the pane is gone
+	let destroyed = false;
 
 	// Terminal programs align text by character columns, so this is the one
 	// place that uses a monospaced face; a chosen font goes in front of these.
@@ -209,6 +211,7 @@
 			import('@xterm/addon-unicode11'),
 			import('@xterm/addon-image'),
 		]);
+		if (destroyed || !host) return;
 		const tm = new Terminal({
 			fontFamily: MONO,
 			fontSize: preferences.term_font_size,
@@ -288,6 +291,7 @@
 	});
 
 	onDestroy(() => {
+		destroyed = true;
 		register(null);
 		ro?.disconnect();
 		if (ws) {
@@ -349,10 +353,11 @@
 		}
 	}
 
+	/* the margins are the element's inset, not padding: FitAddon sizes the grid
+	   from this box, and with padding it can count one row too many */
 	.host {
 		position: absolute;
-		inset: 0;
-		padding: 8px 4px 4px 12px;
+		inset: 8px 4px 4px 12px;
 		transition: opacity 160ms ease;
 
 		:global(.xterm-viewport) {

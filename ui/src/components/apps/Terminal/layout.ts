@@ -55,3 +55,19 @@ export function tile(l: Layout): { panes: { pane: number; rect: Rect }[]; divide
 	walk(l, { x: 0, y: 0, w: 1, h: 1 });
 	return { panes, dividers };
 }
+
+/**
+ * The pane that takes the focus when `target` closes: the nearest one in its
+ * sibling subtree (the pane that grows into its space), not the first pane of the tab.
+ */
+export function neighbour(l: Layout, target: number): number | null {
+	if ('pane' in l) return null;
+	const in_a = panes_of(l.a).includes(target);
+	if (!in_a && !panes_of(l.b).includes(target)) return null;
+	const child = in_a ? l.a : l.b;
+	if ('pane' in child) {
+		const sib = panes_of(in_a ? l.b : l.a);
+		return in_a ? sib[0] : sib[sib.length - 1];
+	}
+	return neighbour(child, target);
+}

@@ -188,6 +188,12 @@
 	// ---- recording ----
 
 	let poll: ReturnType<typeof setInterval> | undefined;
+	let alive = true;
+	/** (Re)start polling the recording status; never after the window has closed (callers await first). */
+	function start_poll() {
+		clearInterval(poll);
+		if (alive) poll = setInterval(refresh_status, 120);
+	}
 	let status_at = 0;
 	async function refresh_status() {
 		try {
@@ -208,7 +214,7 @@
 			ws?.pause();
 			await post('/api/rec/start', {});
 			await refresh_status();
-			poll = setInterval(refresh_status, 120);
+			start_poll();
 		} catch (e) {
 			error = (e as Error).message;
 		}
@@ -385,10 +391,11 @@
 		build();
 		if (!selected && items[0]) select(items[0]);
 		await refresh_status();
-		if (status.recording) poll = setInterval(refresh_status, 120);
+		if (status.recording) start_poll();
 		await load();
 	});
 	onDestroy(() => {
+		alive = false;
 		clearInterval(poll);
 		cancelAnimationFrame(raf);
 		ws?.destroy();
