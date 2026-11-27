@@ -155,21 +155,7 @@ export function open_settings(pane: string) {
 	open_app('settings');
 }
 
-// How many times each window has been closed; see while_open.
-const close_count: Record<string, number> = {};
-
-/**
- * For a window's async work: returns a check that stays true until that window
- * is next closed. A closed window stays mounted through its close animation, and
- * reopening it then mounts a second copy, so onDestroy alone comes too late.
- */
-export function while_open(id: AppID): () => boolean {
-	const n = close_count[id] ?? 0;
-	return () => (close_count[id] ?? 0) === n;
-}
-
 export function close_app(id: AppID) {
-	close_count[id] = (close_count[id] ?? 0) + 1;
 	apps.open[id] = false;
 	apps.minimized[id] = false;
 	apps.fullscreen[id] = false;

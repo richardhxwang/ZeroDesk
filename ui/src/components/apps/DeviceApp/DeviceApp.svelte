@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { onDestroy, onMount, untrack } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { ApiError, post } from '🍎/lib/api.ts';
 	import { download_blob, stamp } from '🍎/lib/download.ts';
 	import type { ScreenStatus } from '🍎/lib/screen.ts';
-	import { close_app, open_app, while_open, type DeviceWindow } from '🍎/state/apps.svelte.ts';
+	import { apps, close_app, open_app, type DeviceWindow } from '🍎/state/apps.svelte.ts';
 	import { t } from '🍎/state/i18n.svelte.ts';
 	import ScreenTools from '../common/ScreenTools.svelte';
 	import ScreenView from '../common/ScreenView.svelte';
@@ -22,15 +22,16 @@
 	let ended = $state(false);
 	let poll: ReturnType<typeof setInterval> | undefined;
 
-	// the window can close while the app is still starting
+	// The window can close while the app is still starting. A closed window
+	// stays mounted through its close animation, and reopening it then brings
+	// the same component back, so "closed" is whether it is closed right now.
 	let destroyed = false;
-	const still_open = while_open(untrack(() => window_id)); // a window keeps its id
-	const gone = () => destroyed || !still_open();
+	const closed = () => destroyed || !apps.open[window_id];
 
 	onMount(async () => {
 		try {
 			const s = await post<{ id: string }>('/api/vapps/start', { id: app.app });
-			if (gone()) {
+			if (destroyed) {
 				post('/api/vapps/stop', { id: s.id }).catch(() => {});
 				return;
 			}
@@ -53,7 +54,9 @@
 			// apps that cannot run on a virtual screen (administrator, statically
 			// linked) open on the Zero itself, in the Cardputer window
 			if (e instanceof ApiError && e.status === 409) {
-				if (!gone()) await open_on_device();
+				// closed meanwhile: do not start it on the Zero; reopened, the toolbar's button still can
+				if (closed()) error = (e as Error).message;
+				else await open_on_device();
 				return;
 			}
 			error = (e as Error).message;
@@ -75,11 +78,11 @@
 		try {
 			await post('/api/apps/open', { id: app.app });
 			// closed meanwhile: the window id may already belong to a new window of this app
-			if (gone()) return;
+			if (closed()) return;
 			open_app('device');
 			close_app(window_id);
 		} catch (e) {
-			if (!gone()) error = (e as Error).message;
+			if (!destroyed) error = (e as Error).message;
 		}
 	}
 

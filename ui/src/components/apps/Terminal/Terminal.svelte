@@ -65,31 +65,30 @@
 		focus_pane(tab.id, r.pane);
 	}
 
-	/** Close a tab and forget its panes; the last one closes the window. */
+	/**
+	 * Close a tab and forget its panes; the last one closes the window.
+	 * The keyboard stays where it was (the find bar, another tab), unless the
+	 * close removed what had it (this tab's ×, or a tab head when the tab bar
+	 * goes away with the second-to-last tab): then it goes to the tab on screen.
+	 */
 	function remove_tab(id: number) {
 		const i = tabs.findIndex((x) => x.id === id);
 		if (i < 0) return;
+		const had_keyboard = !!root?.contains(document.activeElement);
 		for (const p of panes_of(tabs[i].layout)) delete titles[p];
 		tabs.splice(i, 1);
 		if (!tabs.length) return close_app('terminal');
 		// only closing the tab on screen changes which tab is on screen
-		if (id === current_id) select_tab(tabs[Math.min(i, tabs.length - 1)].id);
-	}
-
-	/**
-	 * The tab's × button. A click does not take the keyboard (mousedown is
-	 * prevented), so it stays where it was, the find bar included. Only when the
-	 * keyboard was on something the close removed (this ×, or a tab head when the
-	 * tab bar goes away) does it go back to the tab on screen.
-	 */
-	function close_tab_button(e: Event, id: number) {
-		e.stopPropagation();
-		const had_keyboard = !!root?.contains(document.activeElement);
-		remove_tab(id);
-		if (!tabs.length) return;
+		if (id === current_id) return select_tab(tabs[Math.min(i, tabs.length - 1)].id);
 		tick().then(() => {
 			if (had_keyboard && !root?.contains(document.activeElement)) focus_pane(tab.id, tab.focused);
 		});
+	}
+
+	/** The tab's ×: a click does not take the keyboard (its mousedown is prevented). */
+	function close_tab_button(e: Event, id: number) {
+		e.stopPropagation();
+		remove_tab(id);
 	}
 
 	/** Remove a pane (its shell ended or it was closed); an empty tab goes. */
@@ -108,6 +107,7 @@
 
 	let find_open = $state(false);
 	let query = $state('');
+	/** count -1: not searched yet (see the focus effect) */
 	let result = $state({ index: -1, count: 0 });
 	let find_input = $state<HTMLInputElement>();
 	/** the pane the query, highlights and count belong to */
@@ -117,13 +117,13 @@
 	// which would drop the match a search had just selected on focus.
 	let pointer_held = false;
 	let root = $state<HTMLDivElement>();
-	/** Run `run(by_pointer)` now, or once the button that is down comes up (or the touch is cancelled). */
-	function after_pointer(run: (by_pointer: boolean) => void) {
-		if (!pointer_held) return void tick().then(() => run(false));
+	/** Run `run()` now, or once the button that is down comes up (or the touch is cancelled). */
+	function after_pointer(run: () => void) {
+		if (!pointer_held) return void tick().then(run);
 		const done = () => {
 			removeEventListener('pointerup', done, true);
 			removeEventListener('pointercancel', done, true);
-			setTimeout(() => run(true));
+			setTimeout(run);
 		};
 		addEventListener('pointerup', done, true);
 		addEventListener('pointercancel', done, true);
@@ -145,8 +145,15 @@
 			if (find_pane !== null) apis.get(find_pane)?.clear_find();
 			find_pane = target;
 			result = { index: -1, count: 0 };
-			// after a click or drag, a selection the person just made is theirs: keep it
-			if (target !== null && query) after_pointer((by_pointer) => target === find_pane && apis.get(target)?.find(query, undefined, by_pointer));
+			// A search selects its match, so after a drag that selected text it would
+			// replace the person's selection: then wait for Next, Previous or typing.
+			if (target !== null && query)
+				after_pointer(() => {
+					if (target !== find_pane) return;
+					const api = apis.get(target);
+					if (api?.has_selection()) result = { index: -1, count: -1 };
+					else api?.find(query);
+				});
 		});
 	});
 
@@ -281,7 +288,7 @@
 						else if (e.key === 'Escape') close_find();
 					}}
 				/>
-				<span class="count">{query ? (result.count ? `${result.index + 1}/${result.count}` : t('term.no_matches')) : ''}</span>
+				<span class="count">{query && result.count >= 0 ? (result.count ? `${result.index + 1}/${result.count}` : t('term.no_matches')) : ''}</span>
 				<button aria-label={t('term.find_prev')} onclick={() => find('prev')} disabled={!result.count}>
 					<svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true"><path d="M3 7.5l3-3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
 				</button>
