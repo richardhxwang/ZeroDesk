@@ -60,7 +60,7 @@
 			if (e instanceof ApiError && e.status === 409) {
 				if (destroyed) return;
 				// closed meanwhile: do not start it on the Zero; reopened, the toolbar's button still can
-				if (closed()) notice = 'vapp.zero_only';
+				if (closed()) (error = ''), (notice = 'vapp.zero_only');
 				else await open_on_device();
 				return;
 			}
@@ -86,6 +86,7 @@
 			if (destroyed) return;
 			// closed (and maybe reopened) meanwhile: leave the windows as they are
 			if (closed()) {
+				error = '';
 				notice = 'vapp.on_zero';
 				return;
 			}
