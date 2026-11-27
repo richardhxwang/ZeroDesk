@@ -51,7 +51,7 @@
 			// apps that cannot run on a virtual screen (administrator, statically
 			// linked) open on the Zero itself, in the Cardputer window
 			if (e instanceof ApiError && e.status === 409) {
-				await open_on_device();
+				if (!destroyed) await open_on_device();
 				return;
 			}
 			error = (e as Error).message;
@@ -72,10 +72,12 @@
 	async function open_on_device() {
 		try {
 			await post('/api/apps/open', { id: app.app });
+			// closed meanwhile: the window id may already belong to a new window of this app
+			if (destroyed) return;
 			open_app('device');
 			close_app(window_id);
 		} catch (e) {
-			error = (e as Error).message;
+			if (!destroyed) error = (e as Error).message;
 		}
 	}
 
