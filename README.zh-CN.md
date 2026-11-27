@@ -79,7 +79,9 @@ CardputerZero 上安装的所有 App，按类别排列，可以搜索。直接�
 
 ### 终端
 
-设备上的完整 shell。
+设备上的完整 shell，支持标签页和分屏、查找、可点击的链接、内嵌图片、从 shell 复制（OSC 52）。把文件拖到窗口上，会上传到 `~/Downloads` 并自动填入路径。
+
+**设置 → 终端** 里可以选配色（随浅色、深色外观切换）、字体（包括显示 Powerline 提示符所需的 Nerd 字体，也可以用你电脑上装的任何字体），以及 Oh My Zsh、Powerlevel10k、Starship、fzf、zoxide 等 shell 扩展。这些都不随 ZeroDesk 打包：选中时才下载，并用 ZeroDesk 里固定的校验和核对。
 
 ![终端](docs/media/terminal.webp)
 
@@ -103,7 +105,7 @@ CardputerZero 上安装的所有 App，按类别排列，可以搜索。直接�
 
 ### 设置
 
-Wi-Fi、网络、电池、通用（重新启动、开发者选项）、外观、屏幕亮度和休眠、声音、扩展接口供电，以及日期与时间。
+Wi-Fi、网络、电池、通用（重新启动、开发者选项）、外观（浅色和深色、墙纸、语言）、终端、屏幕亮度和休眠、声音、扩展接口供电，以及日期与时间。
 
 ![设置](docs/media/settings.webp)
 
@@ -270,7 +272,7 @@ sudo apt remove zerodesk-cp0
 
 issue、pull request 和提交信息用你习惯的语言写就行，中文、英文都可以。
 
-**其他参与方式。** 把 ZeroDesk 翻译成你的语言（文案在 [ui/src/state/i18n.svelte.ts](ui/src/state/i18n.svelte.ts) 里，目前有英文和中文），给你自己的 CardputerZero App 做一个 ZeroDesk 窗口（见 [开发者](#开发者)），或者在设备上试用 ZeroDesk，告诉我们哪里用着不顺手。
+**其他参与方式。** 把 ZeroDesk 翻译成你的语言（文案在 [ui/src/state/i18n.svelte.ts](ui/src/state/i18n.svelte.ts) 里），给你自己的 CardputerZero App 做一个 ZeroDesk 窗口（见 [开发者](#开发者)），或者在设备上试用 ZeroDesk，告诉我们哪里用着不顺手。
 
 ## 致谢
 
