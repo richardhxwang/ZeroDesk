@@ -189,11 +189,11 @@
 	// ---- recording ----
 
 	let poll: ReturnType<typeof setInterval> | undefined;
-	// Replies that arrive once the window is closed must not load, select or poll.
-	// A closed window stays mounted through its close animation and a reopen then
-	// brings the same component back, so this is whether it is open right now.
+	// Replies that arrive once the window is gone must not load, select or poll.
+	// During the close animation the window is still here (a reopen then brings
+	// this same component back), so only onDestroy ends it.
 	let alive = true;
-	const live = () => alive && !!apps.open.recorder;
+	const live = () => alive;
 	/** (Re)start polling the recording status; never after the window has closed (callers await first). */
 	function start_poll() {
 		clearInterval(poll);

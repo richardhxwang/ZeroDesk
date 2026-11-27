@@ -3,7 +3,7 @@
 	import { ApiError, post } from '🍎/lib/api.ts';
 	import { download_blob, stamp } from '🍎/lib/download.ts';
 	import type { ScreenStatus } from '🍎/lib/screen.ts';
-	import { apps, close_app, open_app, type DeviceWindow } from '🍎/state/apps.svelte.ts';
+	import { close_app, closed_since, open_app, type DeviceWindow } from '🍎/state/apps.svelte.ts';
 	import { t } from '🍎/state/i18n.svelte.ts';
 	import ScreenTools from '../common/ScreenTools.svelte';
 	import ScreenView from '../common/ScreenView.svelte';
@@ -22,13 +22,14 @@
 	let ended = $state(false);
 	let poll: ReturnType<typeof setInterval> | undefined;
 
-	// The window can close while the app is still starting. A closed window
-	// stays mounted through its close animation, and reopening it then brings
-	// the same component back, so "closed" is whether it is closed right now.
+	// The window can close while the app is still starting. A session that
+	// started is kept until onDestroy: reopening the window during its close
+	// animation brings this same component back, and it carries on with it.
+	// Replies that would open or close windows check closed_since instead.
 	let destroyed = false;
-	const closed = () => destroyed || !apps.open[window_id];
 
 	onMount(async () => {
+		const closed = closed_since(window_id);
 		try {
 			const s = await post<{ id: string }>('/api/vapps/start', { id: app.app });
 			if (destroyed) {
@@ -54,8 +55,9 @@
 			// apps that cannot run on a virtual screen (administrator, statically
 			// linked) open on the Zero itself, in the Cardputer window
 			if (e instanceof ApiError && e.status === 409) {
+				if (destroyed) return;
 				// closed meanwhile: do not start it on the Zero; reopened, the toolbar's button still can
-				if (closed()) error = (e as Error).message;
+				if (closed()) error = t('vapp.zero_only');
 				else await open_on_device();
 				return;
 			}
@@ -75,10 +77,15 @@
 	}
 
 	async function open_on_device() {
+		const closed = closed_since(window_id);
 		try {
 			await post('/api/apps/open', { id: app.app });
-			// closed meanwhile: the window id may already belong to a new window of this app
-			if (closed()) return;
+			if (destroyed) return;
+			// closed (and maybe reopened) meanwhile: leave the windows as they are
+			if (closed()) {
+				error = t('vapp.on_zero');
+				return;
+			}
 			open_app('device');
 			close_app(window_id);
 		} catch (e) {
