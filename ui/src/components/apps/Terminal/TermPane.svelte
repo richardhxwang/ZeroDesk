@@ -56,8 +56,23 @@
 	let destroyed = false;
 	/** the term this pane's search addon last searched (it continues from a selection only for that term) */
 	let searched: string | undefined;
-	/** the last press in this pane held Alt: an Alt-drag makes a block (column) selection */
-	let block_drag = false;
+	/**
+	 * Where the block (column) selection an Alt-drag in this pane made ended up,
+	 * or null. Compared with the selection at the next move, so a selection that
+	 * replaced it (a search, the addon refreshing after output) is not treated as one.
+	 */
+	let block_sel: string | null = null;
+	function on_press(e: PointerEvent) {
+		block_sel = null;
+		if (e.altKey) {
+			addEventListener(
+				'pointerup',
+				() => setTimeout(() => term?.hasSelection() && (block_sel = JSON.stringify(term.getSelectionPosition()))),
+				{ once: true, capture: true },
+			);
+		}
+		onfocus();
+	}
 
 	// Terminal programs align text by character columns, so this is the one
 	// place that uses a monospaced face; a chosen font goes in front of these.
@@ -295,7 +310,7 @@
 				// the addon moves on from there, inside the block. Make it a plain selection
 				// from the block's top left to its bottom right first; a move replaces the
 				// selection with the match anyway.
-				if (step && block_drag && tm.hasSelection()) {
+				if (step && block_sel !== null && JSON.stringify(tm.getSelectionPosition()) === block_sel) {
 					const { start, end } = tm.getSelectionPosition()!;
 					const l = Math.min(start.x, end.x);
 					const r = Math.max(start.x, end.x);
@@ -317,8 +332,7 @@
 				// so a second try starts from the far end and wraps.
 				if (!go() && step) go();
 				searched = q;
-				// any search replaces the selection: the block fix is for the drag's own one only
-				block_drag = false;
+				block_sel = null;
 			},
 			clear_find: () => {
 				searched = undefined;
@@ -350,7 +364,7 @@
 	class:dragging
 	style:background={theme.background}
 	role="presentation"
-	onpointerdown={(e) => ((block_drag = e.altKey), onfocus())}
+	onpointerdown={on_press}
 	ondragover={(e) => {
 		if (e.dataTransfer?.types.includes('Files')) {
 			e.preventDefault();
