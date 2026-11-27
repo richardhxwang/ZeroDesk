@@ -42,7 +42,8 @@ THEMES = [
     ("everforest", "Everforest", "Everforest Light Med", "Everforest Dark Med"),
     ("monokai-pro", "Monokai Pro", "Monokai Pro Light", "Monokai Pro"),
     ("ayu", "Ayu", "Ayu Light", "Ayu"),
-    ("apple", "Apple System Colors", "Apple System Colors Light", "Apple System Colors"),
+    # the macOS Terminal palette; the short name keeps the tile label on one line
+    ("apple", "Apple", "Apple System Colors Light", "Apple System Colors"),
     ("night-owl", "Night Owl", "Night Owlish Light", "Night Owl"),
 ]
 

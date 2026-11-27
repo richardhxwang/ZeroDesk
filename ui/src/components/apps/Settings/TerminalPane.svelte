@@ -352,11 +352,12 @@
 			padding: 0 2px;
 			min-width: 0;
 
-			/* long names wrap rather than being cut off */
+			/* one line: names are kept short enough to fit, never cut off */
 			b {
 				font-size: 12px;
 				font-weight: 500;
 				line-height: 1.3;
+				white-space: nowrap;
 			}
 
 			small {
