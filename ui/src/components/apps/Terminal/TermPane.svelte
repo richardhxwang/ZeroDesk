@@ -56,23 +56,6 @@
 	let destroyed = false;
 	/** the term this pane's search addon last searched (it continues from a selection only for that term) */
 	let searched: string | undefined;
-	/**
-	 * Where the block (column) selection an Alt-drag in this pane made ended up,
-	 * or null. Compared with the selection at the next move, so a selection that
-	 * replaced it (a search, the addon refreshing after output) is not treated as one.
-	 */
-	let block_sel: string | null = null;
-	function on_press(e: PointerEvent) {
-		block_sel = null;
-		if (e.altKey) {
-			addEventListener(
-				'pointerup',
-				() => setTimeout(() => term?.hasSelection() && (block_sel = JSON.stringify(term.getSelectionPosition()))),
-				{ once: true, capture: true },
-			);
-		}
-		onfocus();
-	}
 
 	// Terminal programs align text by character columns, so this is the one
 	// place that uses a monospaced face; a chosen font goes in front of these.
@@ -306,16 +289,6 @@
 				// a selection only for the term it searched last, otherwise it starts at
 				// the selection. Give it the highlights and that term without touching the
 				// selection (addon-search 0.15, pinned; these members are private).
-				// A block selection dragged right to left ends at its lower left corner, and
-				// the addon moves on from there, inside the block. Make it a plain selection
-				// from the block's top left to its bottom right first; a move replaces the
-				// selection with the match anyway.
-				if (step && block_sel !== null && JSON.stringify(tm.getSelectionPosition()) === block_sel) {
-					const { start, end } = tm.getSelectionPosition()!;
-					const l = Math.min(start.x, end.x);
-					const r = Math.max(start.x, end.x);
-					tm.select(l, start.y, (end.y - start.y) * tm.cols + r - l);
-				}
 				if (step && searched !== q && tm.hasSelection()) {
 					const addon = search as unknown as {
 						_highlightAllMatches(term: string, o: typeof opts): void;
@@ -332,7 +305,6 @@
 				// so a second try starts from the far end and wraps.
 				if (!go() && step) go();
 				searched = q;
-				block_sel = null;
 			},
 			clear_find: () => {
 				searched = undefined;
@@ -364,7 +336,7 @@
 	class:dragging
 	style:background={theme.background}
 	role="presentation"
-	onpointerdown={on_press}
+	onpointerdown={onfocus}
 	ondragover={(e) => {
 		if (e.dataTransfer?.types.includes('Files')) {
 			e.preventDefault();
