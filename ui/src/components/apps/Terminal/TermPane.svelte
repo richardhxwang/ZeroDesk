@@ -5,7 +5,8 @@
 	export type PaneApi = {
 		focus(): void;
 		/** search as the query is typed, or step to the next/previous match */
-		find(query: string, step?: 'next' | 'prev'): void;
+		/** keep_selection: count and highlight matches but leave a selection the user made where it is */
+		find(query: string, step?: 'next' | 'prev', keep_selection?: boolean): void;
 		clear_find(): void;
 	};
 
@@ -280,13 +281,18 @@
 		};
 		register({
 			focus: () => tm.focus(),
-			find: (q, step) => {
+			find: (q, step, keep_selection) => {
 				cancel_clear();
 				if (!q) return search?.clearDecorations();
+				const kept = keep_selection ? tm.getSelectionPosition() : undefined;
 				// while typing, stay on the match that still fits; Enter moves on
 				const opts = { decorations: decorations(), incremental: !step };
 				if (step === 'prev') search?.findPrevious(q, opts);
 				else search?.findNext(q, opts);
+				if (kept) {
+					const { start, end } = kept;
+					tm.select(start.x, start.y, (end.y - start.y) * tm.cols + end.x - start.x);
+				}
 			},
 			clear_find: () => {
 				cancel_clear();

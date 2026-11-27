@@ -8,7 +8,7 @@
 	import MinimapPlugin from 'wavesurfer.js/dist/plugins/minimap.js';
 	import { api, post } from '🍎/lib/api.ts';
 	import { t } from '🍎/state/i18n.svelte.ts';
-	import { apps } from '🍎/state/apps.svelte.ts';
+	import { apps, while_open } from '🍎/state/apps.svelte.ts';
 	import { locale_of, preferences } from '🍎/state/preferences.svelte.ts';
 	import { fmt_time, list_audio, type Track } from '../Music/library.ts';
 
@@ -67,7 +67,7 @@
 
 	async function load() {
 		const list = [...((await revalidate('recordings', data.recordings)) as Track[])];
-		if (!alive) return;
+		if (!live()) return;
 		items = list.sort((a, b) => b.modified - a.modified);
 		if (!selected && items[0]) select(items[0]);
 	}
@@ -88,10 +88,10 @@
 			// a finished recording never changes: peaks seen before (or preloaded) draw at once
 			const key = `peaks:${path}`;
 			const r = cached<Peaks>(key) ?? ((await revalidate(key, data.peaks(path))) as Peaks);
-			if (!alive || selected !== path || !ws) return;
+			if (!live() || selected !== path || !ws) return;
 			await ws.load(src(path), [r.peaks], r.duration);
 		} catch {
-			if (alive && selected === path) ws?.load(src(path)).catch(() => {});
+			if (live() && selected === path) ws?.load(src(path)).catch(() => {});
 		}
 	}
 
@@ -189,12 +189,15 @@
 	// ---- recording ----
 
 	let poll: ReturnType<typeof setInterval> | undefined;
-	// false once the window has closed: replies that arrive later must not load or poll
+	// false once the window has closed (its close animation included): replies
+	// that arrive later must not load, select or poll
 	let alive = true;
+	const still_open = while_open('recorder');
+	const live = () => alive && still_open();
 	/** (Re)start polling the recording status; never after the window has closed (callers await first). */
 	function start_poll() {
 		clearInterval(poll);
-		if (alive) poll = setInterval(refresh_status, 120);
+		if (live()) poll = setInterval(refresh_status, 120);
 	}
 	let status_at = 0;
 	async function refresh_status() {
@@ -355,7 +358,9 @@
 		}
 		await post('/api/fs/op', { op: 'trash', path: it.path });
 		window.dispatchEvent(new CustomEvent('zerodesk-trash-changed'));
+		if (!live()) return;
 		await load();
+		if (!live()) return;
 		const next = items[Math.min(i, items.length - 1)];
 		if (next && !selected) select(next);
 	}
@@ -393,7 +398,7 @@
 		build();
 		if (!selected && items[0]) select(items[0]);
 		await refresh_status();
-		if (!alive) return;
+		if (!live()) return;
 		if (status.recording) start_poll();
 		await load();
 	});

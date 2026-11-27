@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { ApiError, post } from '🍎/lib/api.ts';
 	import { download_blob, stamp } from '🍎/lib/download.ts';
 	import type { ScreenStatus } from '🍎/lib/screen.ts';
-	import { close_app, open_app, type DeviceWindow } from '🍎/state/apps.svelte.ts';
+	import { close_app, open_app, while_open, type DeviceWindow } from '🍎/state/apps.svelte.ts';
 	import { t } from '🍎/state/i18n.svelte.ts';
 	import ScreenTools from '../common/ScreenTools.svelte';
 	import ScreenView from '../common/ScreenView.svelte';
@@ -22,13 +22,15 @@
 	let ended = $state(false);
 	let poll: ReturnType<typeof setInterval> | undefined;
 
-	// set on destroy: the window can close while the app is still starting
+	// the window can close while the app is still starting
 	let destroyed = false;
+	const still_open = while_open(untrack(() => window_id)); // a window keeps its id
+	const gone = () => destroyed || !still_open();
 
 	onMount(async () => {
 		try {
 			const s = await post<{ id: string }>('/api/vapps/start', { id: app.app });
-			if (destroyed) {
+			if (gone()) {
 				post('/api/vapps/stop', { id: s.id }).catch(() => {});
 				return;
 			}
@@ -51,7 +53,7 @@
 			// apps that cannot run on a virtual screen (administrator, statically
 			// linked) open on the Zero itself, in the Cardputer window
 			if (e instanceof ApiError && e.status === 409) {
-				if (!destroyed) await open_on_device();
+				if (!gone()) await open_on_device();
 				return;
 			}
 			error = (e as Error).message;
@@ -73,11 +75,11 @@
 		try {
 			await post('/api/apps/open', { id: app.app });
 			// closed meanwhile: the window id may already belong to a new window of this app
-			if (destroyed) return;
+			if (gone()) return;
 			open_app('device');
 			close_app(window_id);
 		} catch (e) {
-			if (!destroyed) error = (e as Error).message;
+			if (!gone()) error = (e as Error).message;
 		}
 	}
 

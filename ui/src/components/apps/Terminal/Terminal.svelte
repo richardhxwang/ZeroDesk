@@ -78,14 +78,18 @@
 
 	/**
 	 * The tab's × button. A click does not take the keyboard (mousedown is
-	 * prevented), so it stays where it was, the find bar included; only when the
-	 * keyboard was on the × itself (Tab, then Enter) does it go back to the tab on screen.
+	 * prevented), so it stays where it was, the find bar included. Only when the
+	 * keyboard was on something the close removed (this ×, or a tab head when the
+	 * tab bar goes away) does it go back to the tab on screen.
 	 */
 	function close_tab_button(e: Event, id: number) {
 		e.stopPropagation();
-		const had_keyboard = e.currentTarget === document.activeElement;
+		const had_keyboard = !!root?.contains(document.activeElement);
 		remove_tab(id);
-		if (had_keyboard && tabs.length) focus_pane(tab.id, tab.focused);
+		if (!tabs.length) return;
+		tick().then(() => {
+			if (had_keyboard && !root?.contains(document.activeElement)) focus_pane(tab.id, tab.focused);
+		});
 	}
 
 	/** Remove a pane (its shell ended or it was closed); an empty tab goes. */
@@ -112,9 +116,17 @@
 	// A click into a pane: xterm clears the selection when the button comes up,
 	// which would drop the match a search had just selected on focus.
 	let pointer_held = false;
-	function after_pointer(run: () => void) {
-		if (!pointer_held) return void tick().then(run);
-		addEventListener('pointerup', () => setTimeout(run), { once: true, capture: true });
+	let root = $state<HTMLDivElement>();
+	/** Run `run(by_pointer)` now, or once the button that is down comes up (or the touch is cancelled). */
+	function after_pointer(run: (by_pointer: boolean) => void) {
+		if (!pointer_held) return void tick().then(() => run(false));
+		const done = () => {
+			removeEventListener('pointerup', done, true);
+			removeEventListener('pointercancel', done, true);
+			setTimeout(() => run(true));
+		};
+		addEventListener('pointerup', done, true);
+		addEventListener('pointercancel', done, true);
 	}
 	const on_pointer_up = () => (pointer_held = false);
 	addEventListener('pointerup', on_pointer_up);
@@ -133,7 +145,8 @@
 			if (find_pane !== null) apis.get(find_pane)?.clear_find();
 			find_pane = target;
 			result = { index: -1, count: 0 };
-			if (target !== null && query) after_pointer(() => target === find_pane && apis.get(target)?.find(query));
+			// after a click or drag, a selection the person just made is theirs: keep it
+			if (target !== null && query) after_pointer((by_pointer) => target === find_pane && apis.get(target)?.find(query, undefined, by_pointer));
 		});
 	});
 
@@ -184,7 +197,7 @@
 
 
 <!-- keydown bubbles here from every control in the window; a pane that handled a shortcut has already prevented it -->
-<div class="terminal" role="presentation" onkeydown={(e) => !e.defaultPrevented && shortcut(e)} onpointerdowncapture={() => (pointer_held = true)}>
+<div class="terminal" role="presentation" bind:this={root} onkeydown={(e) => !e.defaultPrevented && shortcut(e)} onpointerdowncapture={() => (pointer_held = true)}>
 	<Toolbar title={t('app.terminal')} subtitle={title_of(tab.focused)}>
 		{#snippet trailing()}
 			<ToolButton label={t('term.find')} onclick={open_find} pressed={find_open}>
