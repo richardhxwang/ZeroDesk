@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 )
@@ -41,14 +43,18 @@ type preset struct {
 	Preview map[string][]string `json:"preview,omitempty"`
 	Family  string              `json:"family,omitempty"`
 	Nerd    bool                `json:"nerd,omitempty"`
-	License string              `json:"license"`
-	Source  string              `json:"source"`
-	Files   []presetFile        `json:"files,omitempty"`
+	// shell add-ons: needs zsh, and the program a release archive carries
+	Zsh     bool         `json:"zsh,omitempty"`
+	Bin     string       `json:"bin,omitempty"`
+	License string       `json:"license"`
+	Source  string       `json:"source"`
+	Files   []presetFile `json:"files,omitempty"`
 }
 
 type presetCatalog struct {
 	Themes []preset `json:"themes"`
 	Fonts  []preset `json:"fonts"`
+	Shell  []preset `json:"shell"`
 }
 
 const maxPresetFile = 16 << 20
@@ -57,7 +63,8 @@ var (
 	presetsOnce  sync.Once
 	presetsCat   presetCatalog
 	presetsByID  map[string]*preset
-	presetLocks  sync.Map // id → *sync.Mutex, one download per preset
+	presetsShell map[string]bool // ids of shell add-ons (agent/shell.go)
+	presetLocks  sync.Map        // id → *sync.Mutex, one download per preset
 	presetClient = &http.Client{Timeout: 3 * time.Minute}
 	presetsRoot  = func() string {
 		home, _ := os.UserHomeDir()
@@ -71,7 +78,11 @@ func loadPresets() {
 			panic("presets/catalog.json: " + err.Error())
 		}
 		presetsByID = map[string]*preset{}
-		for _, list := range [][]preset{presetsCat.Themes, presetsCat.Fonts} {
+		presetsShell = map[string]bool{}
+		for i := range presetsCat.Shell {
+			presetsShell[presetsCat.Shell[i].ID] = true
+		}
+		for _, list := range [][]preset{presetsCat.Themes, presetsCat.Fonts, presetsCat.Shell} {
 			for i := range list {
 				presetsByID[list[i].ID] = &list[i]
 			}
@@ -79,7 +90,23 @@ func loadPresets() {
 	})
 }
 
+// shell add-ons are unpacked and their archives deleted; this file records
+// which archives they came from
+const presetMarker = ".installed"
+
+func presetMarkerText(p *preset) string {
+	var b strings.Builder
+	for _, f := range p.Files {
+		b.WriteString(f.SHA256 + "  " + f.Name + "\n")
+	}
+	return b.String()
+}
+
 func presetInstalled(p *preset) bool {
+	if presetsShell[p.ID] {
+		b, err := os.ReadFile(filepath.Join(presetsRoot(), p.ID, presetMarker))
+		return err == nil && string(b) == presetMarkerText(p)
+	}
 	for _, f := range p.Files {
 		st, err := os.Stat(filepath.Join(presetsRoot(), p.ID, f.Name))
 		if err != nil || st.Size() != f.Size {
@@ -113,7 +140,7 @@ func handlePresetsList(w http.ResponseWriter, r *http.Request) {
 		}
 		return out
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"themes": conv(presetsCat.Themes), "fonts": conv(presetsCat.Fonts)})
+	writeJSON(w, http.StatusOK, map[string]any{"themes": conv(presetsCat.Themes), "fonts": conv(presetsCat.Fonts), "shell": conv(presetsCat.Shell)})
 }
 
 // POST /api/presets/{id}: download the preset's files (once).
@@ -139,9 +166,24 @@ func handlePresetDelete(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no such preset"})
 		return
 	}
+	if presetsShell[p.ID] {
+		shellMu.Lock()
+		st := loadShellState()
+		shellMu.Unlock()
+		if shellPrompts[st.Prompt] == p.ID || slices.Contains(st.Tools, p.ID) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "in use"})
+			return
+		}
+	}
 	mu, _ := presetLocks.LoadOrStore(p.ID, &sync.Mutex{})
 	mu.(*sync.Mutex).Lock()
 	defer mu.(*sync.Mutex).Unlock()
+	if presetsShell[p.ID] {
+		os.RemoveAll(filepath.Join(shellDataDir(), p.ID))
+		if p.Bin != "" {
+			os.Remove(filepath.Join(shellDataDir(), "bin", p.Bin))
+		}
+	}
 	if err := os.RemoveAll(filepath.Join(presetsRoot(), p.ID)); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -188,6 +230,9 @@ func presetFetch(ctx context.Context, p *preset) error {
 	mu.(*sync.Mutex).Lock()
 	defer mu.(*sync.Mutex).Unlock()
 	dir := filepath.Join(presetsRoot(), p.ID)
+	if presetInstalled(p) {
+		return nil
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
@@ -199,6 +244,15 @@ func presetFetch(ctx context.Context, p *preset) error {
 		if err := presetDownload(ctx, f, path); err != nil {
 			return fmt.Errorf("%s: %w", f.Name, err)
 		}
+	}
+	if presetsShell[p.ID] {
+		if err := installShellPreset(ctx, p, dir); err != nil {
+			return err
+		}
+		for _, f := range p.Files {
+			os.Remove(filepath.Join(dir, f.Name))
+		}
+		return os.WriteFile(filepath.Join(dir, presetMarker), []byte(presetMarkerText(p)), 0o644)
 	}
 	return nil
 }

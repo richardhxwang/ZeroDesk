@@ -80,6 +80,34 @@ FONTS = [
 ]
 
 
+# Shell add-ons for the device's own shell (agent/shell.go). Each file is a
+# .tar.gz unpacked under ~/.local/share/zerodesk/shell/<id>/<name>/; "bin"
+# names the program a release archive carries. Pinned to releases/commits.
+CODELOAD = "https://codeload.github.com"
+SHELL = [
+    # (id, display name, needs zsh, program, [(name, url)], licence, source)
+    ("starship", "Starship", False, "starship",
+     [("starship", "https://github.com/starship/starship/releases/download/v1.27.0/starship-aarch64-unknown-linux-musl.tar.gz")],
+     "ISC", "https://starship.rs"),
+    ("ohmyzsh", "Oh My Zsh", True, None,
+     [("ohmyzsh", f"{CODELOAD}/ohmyzsh/ohmyzsh/tar.gz/abfce729ab56543b976b08ef34a54b3dc57601a4")],
+     "MIT", "https://ohmyz.sh"),
+    ("powerlevel10k", "Powerlevel10k", True, None,
+     [("powerlevel10k", f"{CODELOAD}/romkatv/powerlevel10k/tar.gz/refs/tags/v1.21.0")],
+     "MIT", "https://github.com/romkatv/powerlevel10k"),
+    ("zsh-plugins", "Autosuggestions & Highlighting", True, None,
+     [("autosuggestions", f"{CODELOAD}/zsh-users/zsh-autosuggestions/tar.gz/refs/tags/v0.7.1"),
+      ("highlighting", f"{CODELOAD}/zsh-users/zsh-syntax-highlighting/tar.gz/refs/tags/0.8.0")],
+     "MIT, BSD-3-Clause", "https://github.com/zsh-users"),
+    ("fzf", "fzf", False, "fzf",
+     [("fzf", "https://github.com/junegunn/fzf/releases/download/v0.75.0/fzf-0.75.0-linux_arm64.tar.gz")],
+     "MIT", "https://junegunn.github.io/fzf/"),
+    ("zoxide", "zoxide", False, "zoxide",
+     [("zoxide", "https://github.com/ajeetdsouza/zoxide/releases/download/v0.10.0/zoxide-0.10.0-aarch64-unknown-linux-musl.tar.gz")],
+     "MIT", "https://github.com/ajeetdsouza/zoxide"),
+]
+
+
 def fetch(url: str) -> bytes:
     req = urllib.request.Request(url, headers={"User-Agent": "zerodesk-presets-catalog"})
     with urllib.request.urlopen(req, timeout=120) as r:
@@ -116,6 +144,17 @@ def font(fid, name, family, nerd, files, lic, source) -> dict:
     return {"id": fid, "name": name, "family": family, "nerd": nerd, "license": lic, "source": source, "files": out}
 
 
+def shell(sid, name, needs_zsh, program, files, lic, source) -> dict:
+    out = []
+    for stem, url in files:
+        data = fetch(url)
+        out.append(entry(url, f"{stem}.tar.gz", data))
+    d = {"id": sid, "name": name, "zsh": needs_zsh, "license": lic, "source": source, "files": out}
+    if program:
+        d["bin"] = program
+    return d
+
+
 def main() -> int:
     themes = []
     for t in THEMES:
@@ -125,9 +164,13 @@ def main() -> int:
     for f in FONTS:
         print("font ", f[0], file=sys.stderr)
         fonts.append(font(*f))
+    shells = []
+    for x in SHELL:
+        print("shell", x[0], file=sys.stderr)
+        shells.append(shell(*x))
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({"themes": themes, "fonts": fonts}, ensure_ascii=False, indent=1) + "\n")
-    print(f"wrote {OUT.relative_to(ROOT)}: {len(themes)} themes, {len(fonts)} fonts", file=sys.stderr)
+    OUT.write_text(json.dumps({"themes": themes, "fonts": fonts, "shell": shells}, ensure_ascii=False, indent=1) + "\n")
+    print(f"wrote {OUT.relative_to(ROOT)}: {len(themes)} themes, {len(fonts)} fonts, {len(shells)} shell add-ons", file=sys.stderr)
     return 0
 
 

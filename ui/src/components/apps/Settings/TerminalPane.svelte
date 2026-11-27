@@ -2,7 +2,23 @@
 	import { onMount } from 'svelte';
 	import { format_bytes, t } from '🍎/state/i18n.svelte.ts';
 	import { preferences, type CursorStyle } from '🍎/state/preferences.svelte.ts';
-	import { font_family_of, get_preset, load_presets, local_font_available, presets, remove_preset, variant_of, type Mode, type PresetFont } from '🍎/state/presets.svelte.ts';
+	import {
+		font_family_of,
+		get_preset,
+		load_presets,
+		load_shell,
+		local_font_available,
+		presets,
+		PROMPT_ADDON,
+		remove_preset,
+		set_shell,
+		shell,
+		variant_of,
+		type Mode,
+		type Prompt,
+		type PresetFont,
+	} from '🍎/state/presets.svelte.ts';
+	import type { MsgKey } from '🍎/state/i18n.svelte.ts';
 	import Segmented from '../common/Segmented.svelte';
 
 	// Settings › Terminal. Colour schemes and fonts that are not on the device
@@ -21,7 +37,45 @@
 	onMount(() => {
 		preferences.seen_terminal_settings = true;
 		load_presets().catch((e) => (error = (e as Error).message));
+		load_shell().catch((e) => (error = (e as Error).message));
 	});
+
+	// prompt styles and tools for the device's own shell (agent/shell.go)
+	const PROMPTS: { id: Prompt; name: string; note?: MsgKey }[] = [
+		{ id: '', name: '' },
+		{ id: 'starship', name: 'Starship', note: 'settings.prompt_starship_note' },
+		{ id: 'robbyrussell', name: 'robbyrussell', note: 'settings.prompt_omz_note' },
+		{ id: 'agnoster', name: 'agnoster', note: 'settings.prompt_agnoster_note' },
+		{ id: 'powerlevel10k', name: 'Powerlevel10k', note: 'settings.prompt_p10k_note' },
+	];
+	const TOOLS: { id: string; name?: string; label?: MsgKey; note: MsgKey }[] = [
+		{ id: 'fzf', name: 'fzf', note: 'settings.tool_fzf_note' },
+		{ id: 'zoxide', name: 'zoxide', note: 'settings.tool_zoxide_note' },
+		{ id: 'zsh-plugins', label: 'settings.tool_zsh_plugins', note: 'settings.needs_zsh' },
+	];
+	const addon = (id: string) => presets.shell.find((p) => p.id === id);
+
+	function pick_prompt(id: Prompt) {
+		if (shell.busy || id === shell.state.prompt) return;
+		set_shell({ ...shell.state, prompt: id }, id || 'default');
+	}
+
+	function toggle_tool(id: string) {
+		if (shell.busy) return;
+		const on = shell.state.tools.includes(id);
+		set_shell({ ...shell.state, tools: on ? shell.state.tools.filter((x) => x !== id) : [...shell.state.tools, id] }, id);
+	}
+
+	function pick_shell(sh: 'bash' | 'zsh') {
+		if (shell.busy || sh === shell.state.shell) return;
+		// leaving zsh turns off what only works in zsh
+		const zsh_only = (id: string) => !!addon(id)?.zsh;
+		const next =
+			sh === 'bash'
+				? { shell: sh, prompt: zsh_only(PROMPT_ADDON[shell.state.prompt]) ? ('' as Prompt) : shell.state.prompt, tools: shell.state.tools.filter((x) => !zsh_only(x)) }
+				: { ...shell.state, shell: sh };
+		set_shell(next, 'shell');
+	}
 
 	// the variant the Terminal shows right now
 	const colors = $derived.by(() => {
@@ -201,7 +255,65 @@
 	</div>
 </div>
 
-<p class="foot">{t('settings.download_note')}</p>
+<div class="card">
+	<div class="row">
+		<span class="grow">{t('settings.shell')}</span>
+		{#if shell.busy === 'shell'}<span class="spinner"></span>{/if}
+		<Segmented
+			options={[
+				{ value: 'bash' as const, label: 'bash' },
+				{ value: 'zsh' as const, label: 'zsh' },
+			]}
+			value={shell.state.shell}
+			onchange={pick_shell}
+		/>
+	</div>
+</div>
+
+<h2>{t('settings.shell_prompt')}</h2>
+<div class="card">
+	{#each PROMPTS as p (p.id)}
+		{@const a = addon(PROMPT_ADDON[p.id])}
+		<button class="row pick" onclick={() => pick_prompt(p.id)} disabled={!!shell.busy && shell.busy !== (p.id || 'default')}>
+			<span class="grow">
+				<span class="name">{p.name || t('settings.prompt_default')}</span>
+				{#if p.note}<small>{t(p.note)}</small>{/if}
+			</span>
+			{#if a && !a.installed && shell.busy !== (p.id || 'default')}<span class="size">{format_bytes(a.size)}</span>{/if}
+			{#if shell.busy === (p.id || 'default')}<span class="spinner"></span>
+			{:else if a && !a.installed}<i class="f7-icons cloud" aria-hidden="true">cloud_download</i>{/if}
+			{#if shell.state.prompt === p.id}<i class="f7-icons check">checkmark_alt</i>{/if}
+		</button>
+	{/each}
+</div>
+
+<h2>{t('settings.shell_tools')}</h2>
+<div class="card">
+	{#each TOOLS as tool (tool.id)}
+		{@const a = addon(tool.id)}
+		{@const on = shell.state.tools.includes(tool.id)}
+		<div class="row">
+			<span class="grow">
+				<span class="name">{tool.name ?? t(tool.label!)}</span>
+				<small>{t(tool.note)}</small>
+			</span>
+			{#if a && !a.installed && shell.busy !== tool.id}<span class="size">{format_bytes(a.size)}</span><i class="f7-icons cloud" aria-hidden="true">cloud_download</i>{/if}
+			{#if shell.busy === tool.id}<span class="spinner"></span>{/if}
+			<button
+				class="switch"
+				class:on
+				role="switch"
+				aria-checked={on}
+				aria-label={tool.name ?? t(tool.label!)}
+				disabled={!!shell.busy}
+				onclick={() => toggle_tool(tool.id)}><span></span></button
+			>
+		</div>
+	{/each}
+</div>
+{#if shell.error}<p class="foot err">{shell.error}</p>{/if}
+
+<p class="foot">{t('settings.download_note')} {t('settings.shell_note')}</p>
 {#if error}<p class="foot err">{error}</p>{/if}
 
 <style>
@@ -431,6 +543,10 @@
 
 		&.pick {
 			cursor: default;
+		}
+
+		&:disabled {
+			opacity: 0.5;
 		}
 	}
 
