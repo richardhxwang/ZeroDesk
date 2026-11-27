@@ -67,6 +67,7 @@
 
 	async function load() {
 		const list = [...((await revalidate('recordings', data.recordings)) as Track[])];
+		if (!alive) return;
 		items = list.sort((a, b) => b.modified - a.modified);
 		if (!selected && items[0]) select(items[0]);
 	}
@@ -87,10 +88,10 @@
 			// a finished recording never changes: peaks seen before (or preloaded) draw at once
 			const key = `peaks:${path}`;
 			const r = cached<Peaks>(key) ?? ((await revalidate(key, data.peaks(path))) as Peaks);
-			if (selected !== path || !ws) return;
+			if (!alive || selected !== path || !ws) return;
 			await ws.load(src(path), [r.peaks], r.duration);
 		} catch {
-			if (selected === path) ws?.load(src(path)).catch(() => {});
+			if (alive && selected === path) ws?.load(src(path)).catch(() => {});
 		}
 	}
 
@@ -188,6 +189,7 @@
 	// ---- recording ----
 
 	let poll: ReturnType<typeof setInterval> | undefined;
+	// false once the window has closed: replies that arrive later must not load or poll
 	let alive = true;
 	/** (Re)start polling the recording status; never after the window has closed (callers await first). */
 	function start_poll() {
@@ -391,6 +393,7 @@
 		build();
 		if (!selected && items[0]) select(items[0]);
 		await refresh_status();
+		if (!alive) return;
 		if (status.recording) start_poll();
 		await load();
 	});

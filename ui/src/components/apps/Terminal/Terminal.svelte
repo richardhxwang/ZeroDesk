@@ -76,10 +76,16 @@
 		if (id === current_id) select_tab(tabs[Math.min(i, tabs.length - 1)].id);
 	}
 
-	/** The tab's × button: the click took the keyboard, so give it back to the tab on screen. */
-	function close_tab_button(id: number) {
+	/**
+	 * The tab's × button. A click does not take the keyboard (mousedown is
+	 * prevented), so it stays where it was, the find bar included; only when the
+	 * keyboard was on the × itself (Tab, then Enter) does it go back to the tab on screen.
+	 */
+	function close_tab_button(e: Event, id: number) {
+		e.stopPropagation();
+		const had_keyboard = e.currentTarget === document.activeElement;
 		remove_tab(id);
-		if (tabs.length) focus_pane(tab.id, tab.focused);
+		if (had_keyboard && tabs.length) focus_pane(tab.id, tab.focused);
 	}
 
 	/** Remove a pane (its shell ended or it was closed); an empty tab goes. */
@@ -103,6 +109,21 @@
 	/** the pane the query, highlights and count belong to */
 	let find_pane = $state<number | null>(null);
 
+	// A click into a pane: xterm clears the selection when the button comes up,
+	// which would drop the match a search had just selected on focus.
+	let pointer_held = false;
+	function after_pointer(run: () => void) {
+		if (!pointer_held) return void tick().then(run);
+		addEventListener('pointerup', () => setTimeout(run), { once: true, capture: true });
+	}
+	const on_pointer_up = () => (pointer_held = false);
+	addEventListener('pointerup', on_pointer_up);
+	addEventListener('pointercancel', on_pointer_up);
+	onDestroy(() => {
+		removeEventListener('pointerup', on_pointer_up);
+		removeEventListener('pointercancel', on_pointer_up);
+	});
+
 	// The focused pane changed (a click, another tab, a split, a pane closed):
 	// clear the old pane's highlights and search the new one.
 	$effect(() => {
@@ -112,7 +133,7 @@
 			if (find_pane !== null) apis.get(find_pane)?.clear_find();
 			find_pane = target;
 			result = { index: -1, count: 0 };
-			if (target !== null && query) tick().then(() => target === find_pane && apis.get(target)?.find(query));
+			if (target !== null && query) after_pointer(() => target === find_pane && apis.get(target)?.find(query));
 		});
 	});
 
@@ -163,7 +184,7 @@
 
 
 <!-- keydown bubbles here from every control in the window; a pane that handled a shortcut has already prevented it -->
-<div class="terminal" role="presentation" onkeydown={(e) => !e.defaultPrevented && shortcut(e)}>
+<div class="terminal" role="presentation" onkeydown={(e) => !e.defaultPrevented && shortcut(e)} onpointerdowncapture={() => (pointer_held = true)}>
 	<Toolbar title={t('app.terminal')} subtitle={title_of(tab.focused)}>
 		{#snippet trailing()}
 			<ToolButton label={t('term.find')} onclick={open_find} pressed={find_open}>
@@ -195,8 +216,8 @@
 	{#if tabs.length > 1}
 		<div class="tabs" role="tablist">
 			{#each tabs as tb (tb.id)}
-				<div class="tab" class:on={tb.id === current_id} role="tab" tabindex="0" aria-selected={tb.id === current_id} onclick={() => select_tab(tb.id)} onkeydown={(e) => e.key === 'Enter' && select_tab(tb.id)}>
-					<button class="x" aria-label={t('term.close_tab')} onclick={(e) => (e.stopPropagation(), close_tab_button(tb.id))}>
+				<div class="tab" class:on={tb.id === current_id} role="tab" tabindex="0" aria-selected={tb.id === current_id} onclick={() => select_tab(tb.id)} onkeydown={(e) => e.target === e.currentTarget && e.key === 'Enter' && select_tab(tb.id)}>
+					<button class="x" aria-label={t('term.close_tab')} onmousedown={(e) => e.preventDefault()} onclick={(e) => close_tab_button(e, tb.id)}>
 						<svg viewBox="0 0 10 10" width="8" height="8" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" /></svg>
 					</button>
 					<span class="label" title={title_of(tb.focused)}>{tab_label(tb.focused)}</span>
@@ -218,7 +239,12 @@
 							onexit={() => remove_pane(tb.id, pane)}
 							ontitle={(s) => (titles[pane] = s)}
 							onresults={(index, count) => pane === find_pane && (result = { index, count })}
-							register={(a) => (a ? apis.set(pane, a) : apis.delete(pane))}
+							register={(a) => {
+								if (!a) return void apis.delete(pane);
+								apis.set(pane, a);
+								// a pane that starts while the find bar is on it (a split) is searched once it can be
+								if (pane === find_pane && query) a.find(query);
+							}}
 							onshortcut={shortcut}
 						/>
 					</div>

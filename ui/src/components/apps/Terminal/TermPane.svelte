@@ -271,9 +271,17 @@
 			matchOverviewRuler: '#8e8e93',
 			activeMatchColorOverviewRuler: '#ffd60a',
 		});
+		// clear_find's delayed passes; a new search in this pane cancels them
+		let clear_frame = 0;
+		let clear_timer: ReturnType<typeof setTimeout> | undefined;
+		const cancel_clear = () => {
+			cancelAnimationFrame(clear_frame);
+			clearTimeout(clear_timer);
+		};
 		register({
 			focus: () => tm.focus(),
 			find: (q, step) => {
+				cancel_clear();
 				if (!q) return search?.clearDecorations();
 				// while typing, stay on the match that still fits; Enter moves on
 				const opts = { decorations: decorations(), incremental: !step };
@@ -281,11 +289,12 @@
 				else search?.findNext(q, opts);
 			},
 			clear_find: () => {
+				cancel_clear();
 				search?.clearDecorations();
 				tm.clearSelection();
 				// a highlight pass the addon still has queued can select again
-				requestAnimationFrame(() => tm.clearSelection());
-				setTimeout(() => tm.clearSelection(), 250);
+				clear_frame = requestAnimationFrame(() => tm.clearSelection());
+				clear_timer = setTimeout(() => tm.clearSelection(), 250);
 			},
 		});
 	});
