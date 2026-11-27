@@ -1,27 +1,31 @@
 <script lang="ts">
-	import { onDestroy, tick } from 'svelte';
+	import { onDestroy, tick, untrack } from 'svelte';
 	import { close_app, open_settings } from '🍎/state/apps.svelte.ts';
 	import { t } from '🍎/state/i18n.svelte.ts';
 	import { session } from '🍎/state/session.svelte.ts';
 	import { IS_MAC, terminal } from '🍎/state/terminal.svelte.ts';
 	import Toolbar from '../common/Toolbar.svelte';
 	import ToolButton from '../common/ToolButton.svelte';
-	import { close, new_pane, panes_of, split, tile, type Layout } from './layout.ts';
+	import { close, neighbour, new_pane, panes_of, split, tile, type Layout } from './layout.ts';
 	import TermPane, { type PaneApi } from './TermPane.svelte';
 
 	// The Terminal window: tabs, each holding one or more panes in splits
 	// (as in Ghostty), and a find bar for the focused pane. Every pane is its
 	// own shell on the CardputerZero.
+	//
+	// Tabs and panes are always referred to by id, never by position: closing
+	// a tab moves the others, and a callback holding an index would then act
+	// on the wrong one.
 
 	type Tab = { id: number; layout: Layout; focused: number };
 
 	const first = new_pane();
 	let tabs = $state<Tab[]>([{ id: first, layout: { pane: first }, focused: first }]);
-	let current = $state(0);
+	let current_id = $state(first);
 	let titles = $state<Record<number, string>>({});
 	const apis = new Map<number, PaneApi>();
 
-	const tab = $derived(tabs[current]);
+	const tab = $derived(tabs.find((x) => x.id === current_id) ?? tabs[0]);
 	const fallback_title = `${session.user}@${session.hostname}`;
 	const title_of = (pane: number) => titles[pane] || fallback_title;
 	/** A tab shows the folder, as macOS Terminal does: "user@host: ~/src/app" -> "app". */
@@ -31,71 +35,109 @@
 		return where === '~' || !where.includes('/') ? where : where.slice(where.lastIndexOf('/') + 1) || '/';
 	};
 
-	function focus_pane(tab_i: number, pane: number) {
-		tabs[tab_i].focused = pane;
-		tick().then(() => apis.get(pane)?.focus());
+	const tab_by_id = (id: number) => tabs.find((x) => x.id === id);
+
+	/** Make `pane` the tab's focused pane; the keyboard moves only when that tab is the one on screen. */
+	function focus_pane(tab_id: number, pane: number) {
+		const tb = tab_by_id(tab_id);
+		if (!tb) return;
+		tb.focused = pane;
+		if (tab_id === current_id) tick().then(() => apis.get(pane)?.focus());
+	}
+
+	function select_tab(id: number) {
+		const tb = tab_by_id(id);
+		if (!tb) return;
+		current_id = id;
+		focus_pane(id, tb.focused);
 	}
 
 	function new_tab() {
 		const pane = new_pane();
 		tabs.push({ id: pane, layout: { pane }, focused: pane });
-		current = tabs.length - 1;
-		find_open = false;
+		current_id = pane;
+		end_find();
 	}
 
 	function split_focused(dir: 'row' | 'col') {
 		const r = split(tab.layout, tab.focused, dir);
 		tab.layout = r.layout;
-		focus_pane(current, r.pane);
+		focus_pane(tab.id, r.pane);
 	}
 
-	/** Remove a pane (its shell ended or it was closed); an empty tab goes, and the last one closes the window. */
-	function remove_pane(tab_id: number, pane: number) {
-		const i = tabs.findIndex((x) => x.id === tab_id);
+	/** Close a tab and forget its panes; the last one closes the window. */
+	function remove_tab(id: number) {
+		const i = tabs.findIndex((x) => x.id === id);
 		if (i < 0) return;
-		const layout = close(tabs[i].layout, pane);
-		delete titles[pane];
-		if (!layout) {
-			tabs.splice(i, 1);
-			if (!tabs.length) return close_app('terminal');
-			current = Math.min(current, tabs.length - 1);
-			focus_pane(current, tabs[current].focused);
-			return;
-		}
-		tabs[i].layout = layout;
-		if (tabs[i].focused === pane) focus_pane(i, panes_of(layout)[0]);
-	}
-
-	function close_tab(i: number) {
+		for (const p of panes_of(tabs[i].layout)) delete titles[p];
 		tabs.splice(i, 1);
 		if (!tabs.length) return close_app('terminal');
-		current = Math.min(current, tabs.length - 1);
-		focus_pane(current, tabs[current].focused);
+		// only closing the tab on screen changes which tab is on screen
+		if (id === current_id) select_tab(tabs[Math.min(i, tabs.length - 1)].id);
 	}
 
-	/* ---- find ---- */
+	/** The tab's × button: the click took the keyboard, so give it back to the tab on screen. */
+	function close_tab_button(id: number) {
+		remove_tab(id);
+		if (tabs.length) focus_pane(tab.id, tab.focused);
+	}
+
+	/** Remove a pane (its shell ended or it was closed); an empty tab goes. */
+	function remove_pane(tab_id: number, pane: number) {
+		const tb = tab_by_id(tab_id);
+		if (!tb) return;
+		const layout = close(tb.layout, pane);
+		if (!layout) return remove_tab(tab_id);
+		const heir = tb.focused === pane ? neighbour(tb.layout, pane) : null;
+		delete titles[pane];
+		tb.layout = layout;
+		if (heir !== null) focus_pane(tab_id, heir);
+	}
+
+	/* ---- find: it belongs to one pane at a time ---- */
 
 	let find_open = $state(false);
 	let query = $state('');
 	let result = $state({ index: -1, count: 0 });
 	let find_input = $state<HTMLInputElement>();
+	/** the pane the query, highlights and count belong to */
+	let find_pane = $state<number | null>(null);
+
+	// The focused pane changed (a click, another tab, a split, a pane closed):
+	// clear the old pane's highlights and search the new one.
+	$effect(() => {
+		const target = find_open ? tab.focused : null;
+		untrack(() => {
+			if (target === find_pane) return;
+			if (find_pane !== null) apis.get(find_pane)?.clear_find();
+			find_pane = target;
+			result = { index: -1, count: 0 };
+			if (target !== null && query) tick().then(() => target === find_pane && apis.get(target)?.find(query));
+		});
+	});
 
 	function open_find() {
 		find_open = true;
 		tick().then(() => find_input?.select());
 	}
 
-	function close_find() {
+	function end_find() {
+		if (find_pane !== null) apis.get(find_pane)?.clear_find();
 		find_open = false;
-		apis.get(tab.focused)?.clear_find();
+		find_pane = null;
+		result = { index: -1, count: 0 };
+	}
+
+	function close_find() {
+		end_find();
 		apis.get(tab.focused)?.focus();
 	}
 
 	function find(step?: 'next' | 'prev') {
-		apis.get(tab.focused)?.find(query, step);
+		if (find_pane !== null) apis.get(find_pane)?.find(query, step);
 	}
 
-	/** Window shortcuts, also when the terminal has the keyboard. */
+	/** Window shortcuts, wherever the keyboard is in the window (a pane, the find bar, a button). */
 	function shortcut(e: KeyboardEvent): boolean {
 		const mod = IS_MAC ? e.metaKey && !e.ctrlKey : e.ctrlKey && e.shiftKey;
 		const k = e.key.toLowerCase();
@@ -120,7 +162,8 @@
 </script>
 
 
-<div class="terminal">
+<!-- keydown bubbles here from every control in the window; a pane that handled a shortcut has already prevented it -->
+<div class="terminal" role="presentation" onkeydown={(e) => !e.defaultPrevented && shortcut(e)}>
 	<Toolbar title={t('app.terminal')} subtitle={title_of(tab.focused)}>
 		{#snippet trailing()}
 			<ToolButton label={t('term.find')} onclick={open_find} pressed={find_open}>
@@ -151,9 +194,9 @@
 
 	{#if tabs.length > 1}
 		<div class="tabs" role="tablist">
-			{#each tabs as tb, i (tb.id)}
-				<div class="tab" class:on={i === current} role="tab" tabindex="0" aria-selected={i === current} onclick={() => ((current = i), focus_pane(i, tb.focused))} onkeydown={(e) => e.key === 'Enter' && (current = i)}>
-					<button class="x" aria-label={t('term.close_tab')} onclick={(e) => (e.stopPropagation(), close_tab(i))}>
+			{#each tabs as tb (tb.id)}
+				<div class="tab" class:on={tb.id === current_id} role="tab" tabindex="0" aria-selected={tb.id === current_id} onclick={() => select_tab(tb.id)} onkeydown={(e) => e.key === 'Enter' && select_tab(tb.id)}>
+					<button class="x" aria-label={t('term.close_tab')} onclick={(e) => (e.stopPropagation(), close_tab_button(tb.id))}>
 						<svg viewBox="0 0 10 10" width="8" height="8" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" /></svg>
 					</button>
 					<span class="label" title={title_of(tb.focused)}>{tab_label(tb.focused)}</span>
@@ -163,18 +206,18 @@
 	{/if}
 
 	<div class="body">
-		{#each tabs as tb, i (tb.id)}
+		{#each tabs as tb (tb.id)}
 			{@const t_ = tile(tb.layout)}
-			<div class="tab-body" class:hidden={i !== current}>
+			<div class="tab-body" class:hidden={tb.id !== current_id}>
 				<!-- One keyed list for all panes: a split or close moves panes, never recreates their shells. -->
 				{#each t_.panes as { pane, rect } (pane)}
 					<div class="cell" style:left="{rect.x * 100}%" style:top="{rect.y * 100}%" style:width="{rect.w * 100}%" style:height="{rect.h * 100}%">
 						<TermPane
-							focused={i === current && tb.focused === pane}
-							onfocus={() => (tabs[i].focused = pane)}
+							focused={tb.id === current_id && tb.focused === pane}
+							onfocus={() => (tb.focused = pane)}
 							onexit={() => remove_pane(tb.id, pane)}
 							ontitle={(s) => (titles[pane] = s)}
-							onresults={(index, count) => i === current && tb.focused === pane && (result = { index, count })}
+							onresults={(index, count) => pane === find_pane && (result = { index, count })}
 							register={(a) => (a ? apis.set(pane, a) : apis.delete(pane))}
 							onshortcut={shortcut}
 						/>
@@ -197,7 +240,6 @@
 					onkeydown={(e) => {
 						if (e.key === 'Enter') find(e.shiftKey ? 'prev' : 'next');
 						else if (e.key === 'Escape') close_find();
-						else shortcut(e);
 					}}
 				/>
 				<span class="count">{query ? (result.count ? `${result.index + 1}/${result.count}` : t('term.no_matches')) : ''}</span>

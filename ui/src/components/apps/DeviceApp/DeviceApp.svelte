@@ -22,9 +22,16 @@
 	let ended = $state(false);
 	let poll: ReturnType<typeof setInterval> | undefined;
 
+	// set on destroy: the window can close while the app is still starting
+	let destroyed = false;
+
 	onMount(async () => {
 		try {
 			const s = await post<{ id: string }>('/api/vapps/start', { id: app.app });
+			if (destroyed) {
+				post('/api/vapps/stop', { id: s.id }).catch(() => {});
+				return;
+			}
 			session = s.id;
 			// notice when the app quits by itself
 			poll = setInterval(async () => {
@@ -52,6 +59,7 @@
 	});
 
 	onDestroy(() => {
+		destroyed = true;
 		clearInterval(poll);
 		if (session) post('/api/vapps/stop', { id: session }).catch(() => {});
 	});
