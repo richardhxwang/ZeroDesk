@@ -1,5 +1,7 @@
 import type { ITheme } from '@xterm/xterm';
 import { api, post } from '🍎/lib/api.ts';
+import { as_admin } from './admin.svelte.ts';
+import { t } from './i18n.svelte.ts';
 
 // Downloadable Terminal presets (agent/presets.go). The list, with a few
 // colours per scheme for the tiles, comes from the device; a preset's files
@@ -36,9 +38,21 @@ export type PresetFont = {
 	installed: boolean;
 };
 
+/** An add-on for the device's own shell (agent/shell.go). */
+export type PresetShell = {
+	id: string;
+	name: string;
+	/** works only in zsh */
+	zsh: boolean;
+	license: string;
+	size: number;
+	installed: boolean;
+};
+
 export const presets = $state({
 	themes: [] as PresetTheme[],
 	fonts: [] as PresetFont[],
+	shell: [] as PresetShell[],
 	loaded: false,
 	/** ids being downloaded */
 	busy: {} as Record<string, boolean>,
@@ -50,10 +64,11 @@ let loading: Promise<void> | null = null;
 
 export function load_presets(force = false): Promise<void> {
 	if (loading && !force) return loading;
-	loading = api<{ themes: PresetTheme[]; fonts: PresetFont[] }>('/api/presets')
+	loading = api<{ themes: PresetTheme[]; fonts: PresetFont[]; shell: PresetShell[] }>('/api/presets')
 		.then((d) => {
 			presets.themes = d.themes;
 			presets.fonts = d.fonts;
+			presets.shell = d.shell ?? [];
 			presets.loaded = true;
 		})
 		.catch((e) => {
@@ -63,8 +78,8 @@ export function load_presets(force = false): Promise<void> {
 	return loading;
 }
 
-function find(id: string): PresetTheme | PresetFont | undefined {
-	return presets.themes.find((p) => p.id === id) ?? presets.fonts.find((p) => p.id === id);
+function find(id: string): PresetTheme | PresetFont | PresetShell | undefined {
+	return presets.themes.find((p) => p.id === id) ?? presets.fonts.find((p) => p.id === id) ?? presets.shell.find((p) => p.id === id);
 }
 
 /** Download a preset to the device. Resolves true once it can be used. */
@@ -178,4 +193,68 @@ export function local_font_available(family: string): boolean {
 		ctx.font = `20px "${name.replaceAll('"', '')}", ${base}`;
 		return ctx.measureText(sample).width !== plain;
 	});
+}
+
+/* ---- the device's shell ---- */
+
+export type Prompt = '' | 'starship' | 'robbyrussell' | 'agnoster' | 'powerlevel10k';
+export type ShellState = { shell: 'bash' | 'zsh'; prompt: Prompt; tools: string[] };
+
+/** the add-on each prompt style comes from */
+export const PROMPT_ADDON: Record<Prompt, string> = {
+	'': '',
+	starship: 'starship',
+	robbyrussell: 'ohmyzsh',
+	agnoster: 'ohmyzsh',
+	powerlevel10k: 'powerlevel10k',
+};
+
+export const shell = $state({
+	state: { shell: 'bash', prompt: '', tools: [] } as ShellState,
+	/** zsh is installed on the device */
+	zsh: false,
+	loaded: false,
+	/** what is being changed (a prompt or tool id, or "shell") */
+	busy: '',
+	error: '',
+});
+
+export async function load_shell(): Promise<void> {
+	const d = await api<{ state: ShellState; zsh: boolean }>('/api/shell');
+	shell.state = { ...d.state, tools: d.state.tools ?? [] };
+	shell.zsh = d.zsh;
+	shell.loaded = true;
+}
+
+const needs_zsh = (id: string) => !!presets.shell.find((p) => p.id === id)?.zsh;
+
+/**
+ * Turn the shell to `next`: download the add-ons it uses, install zsh when
+ * it is needed (asking for the device password), then save it. `what` is
+ * the row being changed, for its spinner.
+ */
+export async function set_shell(next: ShellState, what: string): Promise<boolean> {
+	shell.busy = what;
+	shell.error = '';
+	try {
+		const ids = [PROMPT_ADDON[next.prompt], ...next.tools].filter(Boolean);
+		if (ids.some(needs_zsh)) next = { ...next, shell: 'zsh' };
+		for (const id of ids) if (!(await get_preset(id))) throw new Error(presets.failed[id] ?? id);
+		if (next.shell === 'zsh' && !shell.zsh) {
+			await as_admin((password) => post('/api/shell/zsh', { password }), {
+				title: t('settings.install_zsh_title'),
+				action: t('settings.install_zsh_action'),
+			});
+			shell.zsh = true;
+		}
+		const d = await post<{ state: ShellState; zsh: boolean }>('/api/shell', next);
+		shell.state = { ...d.state, tools: d.state.tools ?? [] };
+		shell.zsh = d.zsh;
+		return true;
+	} catch (e) {
+		if ((e as Error).name !== 'Cancelled' && (e as Error).message !== 'cancelled') shell.error = (e as Error).message;
+		return false;
+	} finally {
+		shell.busy = '';
+	}
 }

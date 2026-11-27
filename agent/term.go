@@ -24,11 +24,8 @@ func handleTermWS(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		shell = "/bin/bash"
-	}
-	cmd := exec.Command(shell, "-l")
+	// the login shell, or zsh when chosen in Settings › Terminal (shell.go)
+	cmd := exec.Command(terminalShell(), "-l")
 	home, _ := os.UserHomeDir()
 	cmd.Dir = home
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor", "LANG=C.UTF-8")

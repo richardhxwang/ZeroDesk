@@ -808,5 +808,106 @@
     }
    ]
   }
+ ],
+ "shell": [
+  {
+   "id": "starship",
+   "name": "Starship",
+   "zsh": false,
+   "license": "ISC",
+   "source": "https://starship.rs",
+   "files": [
+    {
+     "name": "starship.tar.gz",
+     "url": "https://github.com/starship/starship/releases/download/v1.27.0/starship-aarch64-unknown-linux-musl.tar.gz",
+     "size": 4776202,
+     "sha256": "341f5cbf24699fa0b27ec88965ad25f862ea09e15d35a543fd6ffdff1d2aa00d"
+    }
+   ],
+   "bin": "starship"
+  },
+  {
+   "id": "ohmyzsh",
+   "name": "Oh My Zsh",
+   "zsh": true,
+   "license": "MIT",
+   "source": "https://ohmyz.sh",
+   "files": [
+    {
+     "name": "ohmyzsh.tar.gz",
+     "url": "https://codeload.github.com/ohmyzsh/ohmyzsh/tar.gz/abfce729ab56543b976b08ef34a54b3dc57601a4",
+     "size": 3527975,
+     "sha256": "bbce1d9d3e37a1ae281112398b86f518eb72227b40251455d0af2d298fa31b5d"
+    }
+   ]
+  },
+  {
+   "id": "powerlevel10k",
+   "name": "Powerlevel10k",
+   "zsh": true,
+   "license": "MIT",
+   "source": "https://github.com/romkatv/powerlevel10k",
+   "files": [
+    {
+     "name": "powerlevel10k.tar.gz",
+     "url": "https://codeload.github.com/romkatv/powerlevel10k/tar.gz/refs/tags/v1.21.0",
+     "size": 388780,
+     "sha256": "352e277a60dbdda0a2005758b0c20b35e04a315b98f06bb8a75ef649e9b8c881"
+    }
+   ]
+  },
+  {
+   "id": "zsh-plugins",
+   "name": "Autosuggestions & Highlighting",
+   "zsh": true,
+   "license": "MIT, BSD-3-Clause",
+   "source": "https://github.com/zsh-users",
+   "files": [
+    {
+     "name": "autosuggestions.tar.gz",
+     "url": "https://codeload.github.com/zsh-users/zsh-autosuggestions/tar.gz/refs/tags/v0.7.1",
+     "size": 29968,
+     "sha256": "0df7affff21cd87ed298e6a3970ed08a1dd66a6efa676454ee5b091ad503badf"
+    },
+    {
+     "name": "highlighting.tar.gz",
+     "url": "https://codeload.github.com/zsh-users/zsh-syntax-highlighting/tar.gz/refs/tags/0.8.0",
+     "size": 155914,
+     "sha256": "5981c19ebaab027e356fe1ee5284f7a021b89d4405cc53dc84b476c3aee9cc32"
+    }
+   ]
+  },
+  {
+   "id": "fzf",
+   "name": "fzf",
+   "zsh": false,
+   "license": "MIT",
+   "source": "https://junegunn.github.io/fzf/",
+   "files": [
+    {
+     "name": "fzf.tar.gz",
+     "url": "https://github.com/junegunn/fzf/releases/download/v0.75.0/fzf-0.75.0-linux_arm64.tar.gz",
+     "size": 2080077,
+     "sha256": "bd0717badb6a5620387e014bb94209aac4d9eab6ab77b5348eabb0833aeb4d59"
+    }
+   ],
+   "bin": "fzf"
+  },
+  {
+   "id": "zoxide",
+   "name": "zoxide",
+   "zsh": false,
+   "license": "MIT",
+   "source": "https://github.com/ajeetdsouza/zoxide",
+   "files": [
+    {
+     "name": "zoxide.tar.gz",
+     "url": "https://github.com/ajeetdsouza/zoxide/releases/download/v0.10.0/zoxide-0.10.0-aarch64-unknown-linux-musl.tar.gz",
+     "size": 551084,
+     "sha256": "f1f16c5d6298d63dee467eedea1cdcd8490e43e493bea43acd416dc9033ef641"
+    }
+   ],
+   "bin": "zoxide"
+  }
  ]
 }
