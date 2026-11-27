@@ -1,0 +1,12 @@
+{
+  "name": "zerodesk-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Browser checks for ZeroDesk against an arm64 container",
+  "scripts": {
+    "test": "./run.sh"
+  },
+  "dependencies": {
+    "playwright-core": "^1.65.1"
+  }
+}
