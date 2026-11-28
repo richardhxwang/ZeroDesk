@@ -31,10 +31,27 @@ var zagentSettingsTool = func() string {
 
 var zagentKeyRe = regexp.MustCompile(`^[a-z_]{1,40}$`)
 
-func runZagent(timeout time.Duration, args ...string) (string, error) {
+// zagentLang is the language ZeroDesk's window asks for (?lang=en|zh), so
+// the rows come in ZeroDesk's language rather than the one chosen on the
+// device for Zagent's own screens. Zagent has English and Chinese only.
+func zagentLang(r *http.Request) string {
+	switch l := r.URL.Query().Get("lang"); l {
+	case "en", "zh":
+		return l
+	}
+	return ""
+}
+
+// runZagent runs zagent-settings. lang ("" = Zagent's own choice) is passed
+// as ZAGENT_LANG; a zagent-settings that predates it ignores it and answers
+// in its own language, which the window then follows so nothing mixes.
+func runZagent(lang string, timeout time.Duration, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, zagentSettingsTool, args...)
+	if lang != "" {
+		cmd.Env = append(os.Environ(), "ZAGENT_LANG="+lang)
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -53,8 +70,8 @@ type zagentError struct{ msg string }
 func (e *zagentError) Error() string { return e.msg }
 
 // GET /api/zagent/settings -> {"lang":..,"sections":[{id,title,rows:[...]}]}
-func handleZagentSettings(w http.ResponseWriter, _ *http.Request) {
-	out, err := runZagent(45*time.Second, "json")
+func handleZagentSettings(w http.ResponseWriter, r *http.Request) {
+	out, err := runZagent(zagentLang(r), 45*time.Second, "json")
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
 		return
@@ -75,7 +92,7 @@ func handleZagentOptions(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad key"})
 		return
 	}
-	out, err := runZagent(45*time.Second, "options", key)
+	out, err := runZagent(zagentLang(r), 45*time.Second, "options", key)
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
 		return
@@ -104,7 +121,7 @@ func handleZagentSet(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad key or value"})
 		return
 	}
-	out, err := runZagent(60*time.Second, "set", body.Key, body.Value)
+	out, err := runZagent(zagentLang(r), 60*time.Second, "set", body.Key, body.Value)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return

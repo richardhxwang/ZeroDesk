@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
+	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"sync"
+	"time"
 )
 
 // Zagent's own web page (zagent-web, ZeroAgent repo tools/zagent-web) listens
@@ -70,6 +75,51 @@ func handleZagentWeb() http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
+		ensureZagentWeb()
 		proxy.ServeHTTP(w, r)
 	}
+}
+
+// zagent-web starts on demand: Zagent enables it when its own sign-in code
+// is shown, and its installer does not start it. ZeroDesk's Zagent window
+// needs it as well, so ZeroDesk starts it (through Zagent's own user unit,
+// with whatever address that unit is set to) when it does not answer. At
+// most one attempt every 30 seconds, so a Zagent that cannot start is not
+// restarted on every poll of the window.
+var zagentWebStart struct {
+	mu   sync.Mutex
+	last time.Time
+}
+
+func zagentWebUp(timeout time.Duration) bool {
+	c, err := net.DialTimeout("tcp", zagentWebAddr, timeout)
+	if err == nil {
+		c.Close()
+	}
+	return err == nil
+}
+
+func ensureZagentWeb() {
+	if zagentWebUp(300 * time.Millisecond) {
+		return
+	}
+	zagentWebStart.mu.Lock()
+	defer zagentWebStart.mu.Unlock()
+	if zagentWebUp(300*time.Millisecond) || time.Since(zagentWebStart.last) < 30*time.Second {
+		return
+	}
+	zagentWebStart.last = time.Now()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := systemctlUser(ctx, "start", "zagent-web.service"); err != nil {
+		log.Printf("zagent: could not start zagent-web: %v", err)
+		return
+	}
+	for deadline := time.Now().Add(8 * time.Second); time.Now().Before(deadline); time.Sleep(200 * time.Millisecond) {
+		if zagentWebUp(300 * time.Millisecond) {
+			log.Printf("zagent: started zagent-web for the Zagent window")
+			return
+		}
+	}
+	log.Printf("zagent: zagent-web started but does not answer on %s", zagentWebAddr)
 }
