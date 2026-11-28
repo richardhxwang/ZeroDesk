@@ -6,7 +6,7 @@ import { decode, icon_url, learn_device_icons, type DeviceAppIcon } from '🍎/l
 import { age, cached, prefetch, revalidate } from '🍎/lib/swr.svelte.ts';
 import { ART } from '🍎/components/SVG/AppIcon.svelte';
 import { OFFICIAL_ART } from '🍎/components/SVG/DeviceIcon.svelte';
-import { icon_look } from '🍎/state/preferences.svelte.ts';
+import { icon_look, preferences } from '🍎/state/preferences.svelte.ts';
 import { load_web_apps, web_apps } from '🍎/state/apps.svelte.ts';
 import { list_audio } from '🍎/components/apps/Music/library.ts';
 import { session } from '🍎/state/session.svelte.ts';
@@ -64,6 +64,11 @@ export function preload_icons(apps: DeviceApp[] = cached<DeviceApp[]>('apps') ??
 	}
 }
 
+/** Zagent speaks English and Chinese; other ZeroDesk languages get English. */
+export function zagent_lang(lang: string): 'en' | 'zh' {
+	return lang === 'zh' ? 'zh' : 'en';
+}
+
 // ---- data (keys are shared with the apps that read them) ----
 export const data = {
 	settings: () => api('/api/settings'),
@@ -71,7 +76,7 @@ export const data = {
 	music: () => list_audio('~/Music'),
 	recordings: () => list_audio('~/Recordings', 1),
 	peaks: (path: string) => () => api<{ duration: number; peaks: number[] }>(`/api/audio/peaks?path=${encodeURIComponent(path)}`),
-	zagent: () => api('/api/zagent/settings'),
+	zagent: () => api(`/api/zagent/settings?lang=${zagent_lang(preferences.lang)}`),
 	apps: () => api<DeviceApp[]>('/api/apps'),
 	fs: (path: string) => () => api(`/api/fs/list?path=${encodeURIComponent(path)}`),
 };

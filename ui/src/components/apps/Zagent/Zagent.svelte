@@ -5,6 +5,7 @@
 	import { cached, revalidate } from '🍎/lib/swr.svelte.ts';
 	import ZagentChat from './ZagentChat.svelte';
 	import { preferences } from '🍎/state/preferences.svelte.ts';
+	import { data, zagent_lang } from '🍎/state/app_preload.ts';
 
 	// Zagent (the CardputerZero agent client) settings, laid out like System
 	// Settings. Groups and rows come from the device tool zagent-settings via
@@ -28,11 +29,13 @@
 	};
 
 	let sections = $state<Section[] | null>(null);
-	// Follow the device language so row labels and buttons never mix.
+	// The window asks Zagent for ZeroDesk's language (Zagent has English and
+	// Chinese). The rows come back in the language Zagent actually used (an
+	// older Zagent ignores the request), and the window follows that, so row
+	// labels and buttons never mix.
+	const wanted = $derived(zagent_lang(preferences.lang));
 	let device_lang = $state('');
-	// The device's language once its settings load (their rows come in it),
-	// ZeroDesk's until then, so the window never mixes the two.
-	const lang = $derived(device_lang || preferences.lang);
+	const lang = $derived(device_lang || wanted);
 	const L = (en: string, zh: string) => (lang === 'zh' ? zh : en);
 	let pane = $state('chat');
 	let query = $state('');
@@ -63,9 +66,17 @@
 	const last = cached<Settings>(SWR_KEY);
 	if (last) show(last);
 
+	// ZeroDesk's language changed while the window is open: ask again
+	let asked = '';
+	$effect(() => {
+		const l = wanted;
+		if (asked && asked !== l) void load();
+		asked = l;
+	});
+
 	async function load() {
 		try {
-			show(await revalidate(SWR_KEY, () => api<Settings>('/api/zagent/settings')));
+			show((await revalidate(SWR_KEY, data.zagent)) as Settings);
 			error = '';
 		} catch (e) {
 			error = (e as Error).message;
@@ -75,7 +86,7 @@
 	async function load_options(row: Row) {
 		if (!row.dynamic_options || dynamic[row.key]) return;
 		try {
-			dynamic[row.key] = [...new Set(await api<string[]>(`/api/zagent/options?key=${encodeURIComponent(row.key)}`))];
+			dynamic[row.key] = [...new Set(await api<string[]>(`/api/zagent/options?key=${encodeURIComponent(row.key)}&lang=${wanted}`))];
 		} catch (e) {
 			row_error[row.key] = (e as Error).message;
 		}
@@ -89,7 +100,7 @@
 		busy = row.key;
 		row_error[row.key] = '';
 		try {
-			const r = await post<{ value: string }>('/api/zagent/set', { key: row.key, value });
+			const r = await post<{ value: string }>(`/api/zagent/set?lang=${wanted}`, { key: row.key, value });
 			row.value = r.value;
 			delete drafts[row.key];
 		} catch (e) {
