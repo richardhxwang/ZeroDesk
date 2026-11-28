@@ -219,14 +219,20 @@ func renderScreen(w, h int, info screenInfo) (*image.RGBA, error) {
 	if !info.Running {
 		open = t.openAfterStart // the address does not answer yet
 	}
-	drawText(img, small, open, 16, 62, dim)
-	drawText(img, big, "http://"+info.Host+port, 16, 88, white)
+	// with the network's name on its own line everything moves up a little
+	y := 0
+	if info.WiFi != "" {
+		y = -6
+	}
+	drawText(img, small, open, 16, 62+y, dim)
+	drawText(img, big, "http://"+info.Host+port, 16, 88+y, white)
 	if len(info.Addrs) > 0 {
 		alt := t.or + "  http://" + info.Addrs[0] + port
-		if info.WiFi != "" {
-			alt += "  ·  " + t.sameWiFi + info.WiFi
-		}
-		drawText(img, small, fitText(small, alt, w-32), 16, 110, dim)
+		drawText(img, small, fitText(small, alt, w-32), 16, 110+y, dim)
+	}
+	if info.WiFi != "" {
+		lf, label := fitNamed(info.Lang, 12, t.sameWiFi, info.WiFi, w-32)
+		drawText(img, lf, label, 16, 124, dim)
 	}
 
 	drawKeyHints(img, t, info, keyFace, small, white, dim)
@@ -271,9 +277,10 @@ func renderQRScreen(img *image.RGBA, info screenInfo, t screenText, title, small
 		return false
 	}
 	if info.WiFi != "" {
-		// the code only works from the same network: name it
-		lf := face(mustFont(info.Lang), 11)
-		label := fitText(lf, t.sameWiFi+info.WiFi, box.Dx())
+		// The code only works from the same network: name it. The label
+		// may reach left past the code, up to the title.
+		left := 48 + textWidth(title, "ZeroDesk") + 14
+		lf, label := fitNamed(info.Lang, 11, t.sameWiFi, info.WiFi, box.Max.X-left)
 		drawText(img, lf, label, box.Max.X-textWidth(lf, label), box.Min.Y-8, dim)
 	}
 	right := box.Min.X - 14 // the left column ends here
@@ -325,6 +332,29 @@ func fitText(fc font.Face, s string, width int) string {
 		}
 	}
 	return "…"
+}
+
+// fitNamed fits prefix+name into width: first by stepping the font down from
+// size to 10 px (smaller is not readable on the 1.9-inch screen), then by cutting the middle out of the name (never the
+// prefix), keeping its start and end, where networks such as "Home-5G" and
+// "Home-2.4G" differ.
+func fitNamed(lang string, size float64, prefix, name string, width int) (font.Face, string) {
+	var fc font.Face
+	for sz := size; sz >= 10; sz-- {
+		fc = face(mustFont(lang), sz)
+		if textWidth(fc, prefix+name) <= width {
+			return fc, prefix + name
+		}
+	}
+	r := []rune(name)
+	for n := len(r) - 1; n >= 2; n-- {
+		head := (n + 1) / 2
+		out := prefix + string(r[:head]) + "…" + string(r[len(r)-(n-head):])
+		if textWidth(fc, out) <= width {
+			return fc, out
+		}
+	}
+	return fc, fitText(fc, prefix+name, width)
 }
 
 // wifiName is the Wi-Fi network the device has an address on, if any.

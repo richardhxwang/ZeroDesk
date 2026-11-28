@@ -116,3 +116,17 @@ func TestFitText(t *testing.T) {
 		t.Fatal("short text was changed")
 	}
 }
+
+func TestFitNamedKeepsPrefixAndEnds(t *testing.T) {
+	prefix, name := "Same Wi-Fi: ", "ChinaNet-Home-Living-Room-Upstairs-5G"
+	fc, got := fitNamed("en", 11, prefix, name, 160)
+	if textWidth(fc, got) > 160 {
+		t.Fatalf("%q is %d px wide", got, textWidth(fc, got))
+	}
+	if !strings.HasPrefix(got, prefix+"Chin") || !strings.HasSuffix(got, "-5G") || !strings.Contains(got, "…") {
+		t.Fatalf("fitNamed = %q", got)
+	}
+	if _, got := fitNamed("en", 11, prefix, "Home", 160); got != prefix+"Home" {
+		t.Fatalf("short name changed: %q", got)
+	}
+}
