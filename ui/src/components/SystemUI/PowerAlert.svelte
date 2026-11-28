@@ -2,11 +2,21 @@
 	import AppIcon from '../SVG/AppIcon.svelte';
 	import { t } from '🍎/state/i18n.svelte.ts';
 	import { power, confirm_power } from '🍎/state/power.svelte.ts';
+	import { preferences } from '🍎/state/preferences.svelte.ts';
 	import { fade } from 'svelte/transition';
 
 	// The confirmation for ZeroDesk menu › Restart… / Shut Down…, laid out
 	// like macOS's, and the screen shown while ZeroDesk restarts or is off.
+	// The off screen shows the launcher entry's own screen (agent/devicescreen.go)
+	// with the S key picked out, in the device's words: it speaks Chinese or
+	// English.
+	const device_zh = $derived(preferences.lang === 'zh');
 </script>
+
+{#snippet with_key(text: string)}
+	{@const [before, after] = text.split('{key}')}
+	{before}<kbd>S</kbd>{after}
+{/snippet}
 
 <svelte:window
 	onkeydown={(e) => {
@@ -21,7 +31,7 @@
 		<div class="alert" role="alertdialog" aria-label={t(power.ask === 'restart' ? 'power.restart_title' : 'power.shutdown_title')}>
 			<AppIcon id="device" size={56} />
 			<b>{t(power.ask === 'restart' ? 'power.restart_title' : 'power.shutdown_title')}</b>
-			{#if power.ask === 'shutdown'}<p>{t('power.shutdown_body')}</p>{/if}
+			{#if power.ask === 'shutdown'}<p>{@render with_key(t('power.shutdown_body'))}</p>{/if}
 			{#if power.error}<p class="err">{power.error}</p>{/if}
 			<div class="alert-buttons">
 				<button class="alert-btn" disabled={power.busy} onclick={() => ((power.ask = null), (power.error = ''))}>{t('admin.cancel')}</button>
@@ -40,7 +50,24 @@
 			<b>{t('power.restarting')}</b>
 		{:else}
 			<b>{t('power.off')}</b>
-			<p>{t('power.off_body')}</p>
+			<div class="device" aria-hidden="true">
+				<div class="dev-head">
+					<span class="dev-name"><AppIcon id="device" size={20} />ZeroDesk</span>
+					<span class="dev-pill"><i></i>{device_zh ? '未运行' : 'Not running'}</span>
+				</div>
+				<div class="dev-addr">
+					<small>{device_zh ? '在电脑浏览器中打开' : 'Open in a browser on your computer'}</small>
+					<span>http://{location.host}</span>
+				</div>
+				<div class="dev-keys">
+					<span class="dev-key">ESC</span><span class="dev-label">{device_zh ? '退出' : 'Exit'}</span>
+					<span class="dev-key hot">S</span><span class="dev-label hot">{device_zh ? '启动' : 'Start'}</span>
+				</div>
+			</div>
+			<ol>
+				<li><span class="n">1</span>{t('power.off_step1')}</li>
+				<li><span class="n">2</span><span>{@render with_key(t('power.off_step2'))}</span></li>
+			</ol>
 		{/if}
 	</div>
 {/if}
@@ -118,7 +145,24 @@
 		}
 	}
 
-	/* like a Mac between shutting down and starting: black, one line */
+	kbd {
+		display: inline-grid;
+		place-items: center;
+		min-width: 1.6em;
+		height: 1.6em;
+		margin: 0 0.2em;
+		padding: 0 0.35em;
+		border-radius: 0.35em;
+		font: inherit;
+		font-weight: 600;
+		line-height: 1;
+		vertical-align: 0.05em;
+		color: var(--zd-text);
+		background: var(--zd-control-bg);
+		box-shadow: var(--zd-control-shadow);
+	}
+
+	/* like a Mac between shutting down and starting: black and quiet */
 	.screen {
 		position: fixed;
 		inset: 0;
@@ -127,23 +171,159 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 12px;
+		gap: 24px;
 		padding: 0 24px;
 		background: #000;
 		color: hsla(0, 0%, 100%, 0.88);
 		text-align: center;
 
 		b {
-			font-size: 15px;
+			font-size: 17px;
 			font-weight: 600;
 		}
 
-		p {
-			margin: 0;
-			font-size: 13px;
-			line-height: 1.5;
-			color: hsla(0, 0%, 100%, 0.5);
+		kbd {
+			color: #000;
+			background: hsla(0, 0%, 100%, 0.92);
+			box-shadow: none;
 		}
+	}
+
+	/* the launcher entry's screen, 320 × 170 like the real one */
+	.device {
+		width: min(320px, 100%);
+		aspect-ratio: 320 / 170;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		padding: 14px 14px 12px 16px;
+		border-radius: 10px;
+		background: #0e0e10;
+		box-shadow:
+			0 0 0 6px #2a2a2d,
+			0 0 0 7px hsla(0, 0%, 100%, 0.12);
+		text-align: left;
+		font-size: 12px;
+	}
+
+	.dev-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+	}
+
+	.dev-name {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 16px;
+		font-weight: 600;
+		color: #f2f2f3;
+	}
+
+	.dev-pill {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 3px 10px;
+		border-radius: 10px;
+		background: #28282c;
+		color: #f2f2f3;
+		white-space: nowrap;
+
+		i {
+			width: 6px;
+			height: 6px;
+			border-radius: 50%;
+			background: #ff453a;
+		}
+	}
+
+	.dev-addr {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		min-width: 0;
+
+		small {
+			font-size: 11px;
+			color: #8e8e93;
+		}
+
+		span {
+			font-size: 15px;
+			color: #f2f2f3;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+	}
+
+	.dev-keys {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+	}
+
+	.dev-key {
+		display: grid;
+		place-items: center;
+		min-width: 24px;
+		height: 20px;
+		padding: 0 7px;
+		border-radius: 5px;
+		background: #3a3a3e;
+		color: #f2f2f3;
+		font-size: 11px;
+
+		&.hot {
+			margin-left: 11px;
+			background: #fff;
+			color: #000;
+			font-weight: 700;
+			box-shadow: 0 0 0 3px hsla(0, 0%, 100%, 0.25);
+		}
+	}
+
+	.dev-label {
+		color: #8e8e93;
+
+		&.hot {
+			color: #f2f2f3;
+			font-weight: 600;
+		}
+	}
+
+	ol {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		font-size: 14px;
+		line-height: 1.5;
+		text-align: left;
+		color: hsla(0, 0%, 100%, 0.75);
+
+		li {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+		}
+	}
+
+	.n {
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		box-shadow: inset 0 0 0 1px hsla(0, 0%, 100%, 0.35);
+		font-size: 11px;
+		font-weight: 600;
 	}
 
 	.spinner {
