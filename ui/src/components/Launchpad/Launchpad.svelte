@@ -345,13 +345,17 @@
 		background: hsla(0, 0%, 100%, 0.18);
 	}
 
+	/* The scroll area ends above the Dock, so the last row is never drawn
+	   behind it; the bottom edge fades out to show there is more below. */
 	.scroll {
 		flex: 1;
 		width: 100%;
 		min-height: 0;
 		overflow-y: auto;
 		scrollbar-width: none;
-		padding: 28px 24px 120px;
+		padding: 28px 24px 32px;
+		margin-bottom: calc(var(--zd-dock-height, 92px) + 8px);
+		mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
 	}
 
 	.page {

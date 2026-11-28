@@ -213,6 +213,11 @@
 	const count = $derived(1 + shown.length + running.length + 1); // Finder + Trash
 	const size_for = (n: number, d: number) => (bodyWidth - CHROME - d * DIVIDER - GAP * (n - 1)) / n;
 	const base = $derived(Math.max(MIN, Math.min(MAX, Math.floor(size_for(count, dividers)))));
+	// How much of the bottom edge the Dock covers, for panels that sit behind
+	// it (Launchpad keeps its last row above it).
+	$effect(() => {
+		document.documentElement.style.setProperty('--zd-dock-height', `${base + 30}px`);
+	});
 
 	// kept apps that fit at the smallest size, next to the running apps and the Trash
 	$effect(() => {
