@@ -62,6 +62,27 @@ func writePNG(t *testing.T, path string, img image.Image) {
 	}
 }
 
+// No network address: the screen must not offer an address nobody can reach.
+func TestRenderScreenOffline(t *testing.T) {
+	dir := os.Getenv("ZERODESK_PREVIEW_DIR")
+	for _, lang := range []string{"en", "zh"} {
+		for _, running := range []bool{true, false} {
+			info := screenInfo{Running: running, Host: "cardputerzero.local", Lang: lang}
+			img, err := renderScreen(320, 170, info)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if dir != "" {
+				name := "screen_" + lang + "_offline"
+				if !running {
+					name += "_stopped"
+				}
+				writePNG(t, filepath.Join(dir, name+".png"), img)
+			}
+		}
+	}
+}
+
 // The screen while S is being acted on: no S hint, the status says what is happening.
 func TestRenderScreenPending(t *testing.T) {
 	dir := os.Getenv("ZERODESK_PREVIEW_DIR")

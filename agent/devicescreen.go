@@ -102,13 +102,16 @@ func launcherLang() string {
 type screenText struct {
 	running, stopped, open, or, exit, scan, orOpen string
 	shutDown, start, starting, stopping            string
+	noNet, noNetHint                               string
 }
 
 func screenTextFor(lang string) screenText {
 	if lang == "zh" {
-		return screenText{"运行中", "未运行", "在电脑浏览器中打开", "或", "退出", "扫码登录", "或在浏览器打开", "关闭", "启动", "正在启动…", "正在关闭…"}
+		return screenText{"运行中", "未运行", "在电脑浏览器中打开", "或", "退出", "扫码登录", "或在浏览器打开", "关闭", "启动", "正在启动…", "正在关闭…",
+			"未联网", "在 设置 › Wi-Fi 中连接网络"}
 	}
-	return screenText{"Running", "Not running", "Open in a browser on your computer", "or", "Exit", "Scan to sign in", "or open", "Shut Down", "Start", "Starting…", "Shutting down…"}
+	return screenText{"Running", "Not running", "Open in a browser on your computer", "or", "Exit", "Scan to sign in", "or open", "Shut Down", "Start", "Starting…", "Shutting down…",
+		"No network", "Connect to Wi-Fi in Settings"}
 }
 
 // appIcon decodes ZeroDesk's icon from the embedded web assets.
@@ -176,9 +179,15 @@ func renderScreen(w, h int, info screenInfo) (*image.RGBA, error) {
 		draw.Draw(img, image.Rect(14, 10, 40, 36), ic, image.Point{}, draw.Over)
 	}
 	drawText(img, title, "ZeroDesk", 48, 29, white)
+	// Running only means the service answers on the device itself; with no
+	// network address no computer can reach it, so say that instead.
+	offline := len(info.Addrs) == 0
 	status, sc := t.stopped, red
 	if info.Running {
 		status, sc = t.running, green
+		if offline {
+			status, sc = t.noNet, color.RGBA{255, 159, 10, 255}
+		}
 	}
 	switch info.Pending {
 	case "starting":
@@ -190,6 +199,13 @@ func renderScreen(w, h int, info screenInfo) (*image.RGBA, error) {
 	fillRoundRect(img, image.Rect(w-14-sw-22, 13, w-14, 33), 10, color.RGBA{40, 40, 44, 255})
 	fillRoundRect(img, image.Rect(w-14-sw-14, 20, w-14-sw-8, 26), 3, sc)
 	drawText(img, small, status, w-14-sw-4, 27, white)
+
+	if offline {
+		drawText(img, face(f, 15), t.noNet, 16, 72, white)
+		drawText(img, small, t.noNetHint, 16, 96, dim)
+		drawKeyHints(img, t, info, keyFace, small, white, dim)
+		return img, nil
+	}
 
 	// address
 	port := ""
