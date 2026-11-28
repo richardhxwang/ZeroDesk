@@ -105,7 +105,7 @@ Records with the CardputerZero's microphone. Scrub through the waveform, skip 15
 
 ### Settings
 
-Wi-Fi, network, battery, general (restart, developer options), appearance (light and dark, wallpaper, language), Terminal, display brightness and sleep, sound, expansion-port power, and date and time.
+Wi-Fi, network, battery, general (restart, developer options), appearance (light and dark, wallpaper: built-in pictures with light and dark versions or your own photo, language), Terminal, display brightness and sleep, sound, expansion-port power, and date and time.
 
 ![Settings](docs/media/settings.webp)
 

@@ -368,6 +368,10 @@ Piano samples recorded by Akai and released into the public domain; SFZ mapping 
 
 Downloaded by the device only when picked in Settings › Terminal; the package carries the list (`agent/presets/catalog.json`, with a few colours of each scheme for its tile). Colour schemes: iTerm2-Color-Schemes by Mark Badolato and contributors (https://github.com/mbadolato/iTerm2-Color-Schemes, MIT). Fonts: JetBrains Mono, Fira Code, IBM Plex Mono, Source Code Pro and Cascadia Code (SIL Open Font License 1.1) and Ubuntu Mono (Ubuntu Font Licence 1.0), from Fontsource (https://fontsource.org); MesloLGS Nerd Font (Apache 2.0) and JetBrains Mono Nerd Font (OFL 1.1) from Nerd Fonts (https://www.nerdfonts.com, MIT for the patcher). Shell add-ons, unpacked into the device's ~/.local/share/zerodesk/shell: Starship (ISC, https://starship.rs), Oh My Zsh (MIT, https://ohmyz.sh), Powerlevel10k (MIT, https://github.com/romkatv/powerlevel10k), zsh-autosuggestions (MIT) and zsh-syntax-highlighting (BSD-3-Clause) (https://github.com/zsh-users), fzf (MIT, https://github.com/junegunn/fzf) and zoxide (MIT, https://github.com/ajeetdsouza/zoxide). Each preset's licence and source are listed in the catalog.
 
+## Built-in wallpapers
+
+The pictures in `ui/public/wallpapers/` (Dunes, Ridges, Meadow, Contours, Circles, Keys, each in a light and a dark version) are original artwork made for ZeroDesk. They are drawn by the script in `design/wallpaper-gen/` and covered by ZeroDesk's own MIT licence (see `LICENSE`); no third-party images are included. The device's own wallpaper and pictures users add stay on the device and are not part of the package.
+
 ## WebSR network weights (websr/cnn-m, websr/cnn-s)
 
 From https://github.com/sb2702/websr (MIT, same licence as @websr/webgl above), vendored in `ui/public/websr/`.
@@ -516,4 +520,4 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Build tools (not shipped)
 
-nfpm (https://github.com/goreleaser/nfpm, MIT) builds the Debian package; Vite and TypeScript build the web UI.
+nfpm (https://github.com/goreleaser/nfpm, MIT) builds the Debian package; Vite and TypeScript build the web UI. d3-contour (https://github.com/d3/d3-contour, ISC) traces the contour lines in `design/wallpaper-gen/`; only its output, the SVG files, is shipped.

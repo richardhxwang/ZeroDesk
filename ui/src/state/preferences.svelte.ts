@@ -1,3 +1,4 @@
+import type { WallpaperSet } from '🍎/lib/wallpapers.ts';
 import { persisted } from './persisted.svelte.ts';
 
 /** Daytime 07:00–19:00 is light, the rest of the day dark. */
@@ -33,6 +34,7 @@ export const WALLPAPER_TONES = {
 	rose: ['#d8bcb6', '#2b2123'],
 } as const;
 export type WallpaperTone = keyof typeof WALLPAPER_TONES;
+export type Wallpaper = 'device' | 'custom' | WallpaperSet | WallpaperTone;
 
 // Keys stay flat: persisted() merges a stored value with these defaults one level deep.
 export const preferences = persisted('zerodesk:preferences', {
@@ -43,8 +45,10 @@ export const preferences = persisted('zerodesk:preferences', {
 	lang: 'en' as Lang,
 	device_scale: 3 as number,
 	screen_smooth: true as boolean,
-	/** 'device' (the CardputerZero's own wallpaper) or a plain tone */
-	wallpaper: 'device' as 'device' | WallpaperTone,
+	/** 'device' (the CardputerZero's own wallpaper), a built-in picture, 'custom' or a plain tone */
+	wallpaper: 'device' as Wallpaper,
+	/** revision of the custom picture (the agent's upload time), for cache-busting */
+	wallpaper_rev: 0 as number,
 	/** 'zerodesk' follows light and dark; otherwise a downloaded scheme's id */
 	term_theme: 'zerodesk' as string,
 	/** 'system', 'local' (term_font_local) or a downloaded font's id */
