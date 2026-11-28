@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -34,7 +35,13 @@ func sudoWithoutPassword(ctx context.Context) bool {
 
 // withAdmin runs fn while `sudo -n` works: either because the device allows
 // it (GitHub edition) or because password was just verified.
+// adminMu runs one administrator action at a time: each one clears sudo's
+// cached credential when it ends, which would cut another one short.
+var adminMu sync.Mutex
+
 func withAdmin(ctx context.Context, password string, fn func() error) error {
+	adminMu.Lock()
+	defer adminMu.Unlock()
 	if sudoWithoutPassword(ctx) {
 		return fn()
 	}
@@ -52,6 +59,25 @@ func withAdmin(ctx context.Context, password string, fn func() error) error {
 	}
 	defer exec.Command("sudo", "-K").Run()
 	return fn()
+}
+
+// checkAdmin checks the password without leaving sudo's credential cached
+// (-k with -v validates but does not record), so slow work such as a
+// download can run before withAdmin opens the short window for the step
+// that needs root.
+func checkAdmin(ctx context.Context, password string) error {
+	if sudoWithoutPassword(ctx) {
+		return nil
+	}
+	if password == "" {
+		return errNeedPassword
+	}
+	v := exec.CommandContext(ctx, "sudo", "-k", "-S", "-v", "-p", "")
+	v.Stdin = strings.NewReader(password + "\n")
+	if err := v.Run(); err != nil {
+		return errWrongPassword
+	}
+	return nil
 }
 
 // writeAdminError answers errNeedPassword / errWrongPassword so the UI can

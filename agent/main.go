@@ -9,6 +9,7 @@ import (
 	"embed"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"io"
 	"io/fs"
@@ -19,17 +20,30 @@ import (
 	"path"
 	"path/filepath"
 	"runtime/debug"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 //go:embed all:web
 var webFS embed.FS
 
-const cookieName = "zd_token"
-
 type server struct {
-	token   string
+	tokenMu sync.RWMutex
+	token   string // device access token; "" with -no-auth
+	noAuth  bool
+	// credMu: signing in with the token and replacing the token never
+	// interleave (Settings › Sign Out All).
+	credMu sync.Mutex
+	conns  liveConns
+
+	sessions   *sessionStore // nil with -no-auth
+	loginLimit *attemptLimiter
+	pairLimit  *attemptLimiter
+	hosts      *hostPolicy
+	zagent     zagentTickets
+
 	screen  *screenHub
 	keys    *keyInjector
 	apps    *appManager
@@ -66,26 +80,51 @@ func main() {
 	}
 
 	token := ""
+	var sessions *sessionStore
 	if !*noAuth {
 		var err error
 		token, err = loadOrCreateToken()
 		if err != nil {
 			log.Fatalf("token: %v", err)
 		}
+		if sessions, err = newSessionStore(configDir()); err != nil {
+			log.Fatalf("sessions: %v", err)
+		}
 	}
 
 	s := &server{
-		token:  token,
-		screen: newScreenHub(*fbPath),
-		keys:   newKeyInjector(*kbdName),
-		apps:   newAppManager(),
-		vnc:    newDesktopVNC(),
-		vapps:  newVappManager(),
+		token:      token,
+		noAuth:     *noAuth,
+		sessions:   sessions,
+		loginLimit: newAttemptLimiter(10, 10*time.Minute),
+		pairLimit:  newAttemptLimiter(6, 10*time.Minute),
+		hosts:      loadHostPolicy(),
+		screen:     newScreenHub(*fbPath),
+		keys:       newKeyInjector(*kbdName),
+		apps:       newAppManager(),
+		vnc:        newDesktopVNC(),
+		vapps:      newVappManager(),
 
 		kbdMatch: strings.ToLower(*kbdName),
 		fbPath:   *fbPath,
 	}
 	s.webapps = newWebApps(s.apps)
+	s.webapps.track = s.conns.trackAll
+	if s.sessions != nil {
+		// a signed-out browser's web-app windows, terminals and other open
+		// connections stop working too
+		s.sessions.onRevoke = func(id string) {
+			s.webapps.revokeOwner(id)
+			s.conns.closeOwner(id)
+		}
+		s.webapps.ownerAlive = s.sessions.has
+		// expired sessions are removed for good, and what they opened closes
+		go func() {
+			for range time.Tick(time.Minute) {
+				s.sessions.sweepExpired()
+			}
+		}()
+	}
 	s.apps.keys = s.keys
 	s.apps.ensureLauncherRunning()
 
@@ -97,6 +136,14 @@ func main() {
 	mux.HandleFunc("POST /api/pair/cancel", s.handlePairCancel)
 	mux.HandleFunc("GET /q/{key}", s.handleQRLogin)
 	mux.HandleFunc("GET /api/session", s.auth(s.handleSession))
+	mux.HandleFunc("GET /api/sessions", s.auth(s.handleSessionsList))
+	mux.HandleFunc("DELETE /api/sessions/{id}", s.auth(s.handleSessionRevoke))
+	mux.HandleFunc("POST /api/sessions/reset", s.auth(s.handleSessionsReset))
+	mux.HandleFunc("GET /api/zagent/handoff", s.handleZagentHandoff)
+	mux.HandleFunc("GET /api/pairing", s.auth(s.handlePairingGet))
+	mux.HandleFunc("PUT /api/pairing", s.auth(s.handlePairingPut))
+	mux.HandleFunc("GET /api/hosts", s.auth(s.handleHostsGet))
+	mux.HandleFunc("PUT /api/hosts", s.auth(s.handleHostsPut))
 	mux.HandleFunc("GET /api/wallpaper", s.auth(handleWallpaper))
 	mux.HandleFunc("GET /api/sys", s.auth(handleSys))
 	mux.HandleFunc("GET /api/apps", s.auth(s.apps.handleList))
@@ -161,14 +208,14 @@ func main() {
 	sub, _ := fs.Sub(webFS, "web")
 	mux.Handle("GET /", staticHandler(sub))
 
-	handler := logRequests(zagentWebHost(mux))
+	handler := logRequests(s.guard(s.zagentWebHost(mux)))
 	startAlsoListen(*extra, handler) // port80.go
 	srv := &http.Server{
 		Addr:              *addr,
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
-	log.Printf("zerodesk listening on %s and %s (auth=%v)", *addr, *extra, token != "")
+	log.Printf("zerodesk listening on %s and %s (auth=%v)", *addr, *extra, !*noAuth)
 	log.Fatal(srv.ListenAndServe())
 }
 
@@ -198,24 +245,98 @@ func loadOrCreateToken() (string, error) {
 }
 
 func (s *server) validToken(t string) bool {
-	return subtle.ConstantTimeCompare([]byte(t), []byte(s.token)) == 1
+	s.tokenMu.RLock()
+	defer s.tokenMu.RUnlock()
+	return s.token != "" && subtle.ConstantTimeCompare([]byte(t), []byte(s.token)) == 1
 }
+
+// rotateToken replaces the device access token (Settings › Signed-in
+// browsers › reset). Old zd_token cookies and copies of the token stop working.
+func (s *server) rotateToken() error {
+	home, _ := os.UserHomeDir()
+	path := filepath.Join(home, ".config", "zerodesk", "token")
+	t := randomHex(12)
+	if err := writeFileAtomic(path, []byte(t+"\n")); err != nil {
+		return err
+	}
+	s.tokenMu.Lock()
+	s.token = t
+	s.tokenMu.Unlock()
+	log.Printf("auth: device access token replaced")
+	return nil
+}
+
+// authenticate finds what authorises r: a browser session (zd_session), an
+// old zd_token cookie (exchanged for a session on the spot), or the access
+// token in X-ZeroDesk-Token (scripts). It may set cookies on w.
+func (s *server) authenticate(w http.ResponseWriter, r *http.Request) (*http.Request, bool) {
+	r2, status := s.authenticateStatus(w, r)
+	return r2, status == 0
+}
+
+// authenticateStatus is authenticate with the status to answer a refusal
+// with (401).
+func (s *server) authenticateStatus(w http.ResponseWriter, r *http.Request) (*http.Request, int) {
+	if s.noAuth {
+		return r, 0
+	}
+	if c, err := r.Cookie(sessionCookie); err == nil {
+		if rec, ok, refresh := s.sessions.lookup(c.Value); ok && s.sessionUsableHere(rec, r) {
+			if refresh {
+				setSessionCookie(w, c.Value)
+			}
+			return r.WithContext(withSession(r.Context(), rec)), 0
+		}
+	}
+	// Up to 0.4.x a browser kept the device access token in zd_token. That
+	// cookie no longer signs anyone in (it was the same for every browser and
+	// could not be signed out): the browser pairs once more, and the sign-in
+	// page says why.
+	if c, err := r.Cookie(legacyCookie); err == nil && c.Value != "" {
+		clearCookie(w, legacyCookie)
+		setNotice(w, noticeUpgraded)
+	}
+	if t := r.Header.Get("X-ZeroDesk-Token"); t != "" && s.validToken(t) {
+		return r, 0
+	}
+	return r, http.StatusUnauthorized
+}
+
+// sessionUsableHere: a Zagent session (handed off to zagent.local) works
+// only there and only while the session it came from is signed in; other
+// sessions do not work on zagent.local.
+func (s *server) sessionUsableHere(rec sessionRec, r *http.Request) bool {
+	onZagent := requestHost(r) == zagentHost
+	if rec.Method == "zagent" {
+		return onZagent && s.sessions.has(rec.ParentID)
+	}
+	return !onZagent
+}
+
+// testHookAfterAuth runs between the sign-in check and the registration of
+// a long-lived connection (tests sign the session out there).
+var testHookAfterAuth func()
 
 func (s *server) auth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if s.token == "" {
-			next(w, r)
+		r2, status := s.authenticateStatus(w, r)
+		if status != 0 {
+			writeJSON(w, status, map[string]string{"error": "unauthorized"})
 			return
 		}
-		if c, err := r.Cookie(cookieName); err == nil && s.validToken(c.Value) {
-			next(w, r)
+		rec, _ := sessionFrom(r2)
+		if testHookAfterAuth != nil {
+			testHookAfterAuth()
+		}
+		w2, r3, done := s.conns.track(rec.ID, w, r2)
+		defer done()
+		// Checked again once registered: a sign-out between the check
+		// above and the registration would otherwise miss this connection.
+		if rec.ID != "" && !s.sessions.has(rec.ID) {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 			return
 		}
-		if t := r.Header.Get("X-ZeroDesk-Token"); t != "" && s.validToken(t) {
-			next(w, r)
-			return
-		}
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		next(w2, r3)
 	}
 }
 
@@ -227,13 +348,44 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad request"})
 		return
 	}
-	if s.token != "" && !s.validToken(strings.TrimSpace(body.Token)) {
+	ip := clientIP(r)
+	// The attempt is taken before the token is checked, so parallel guesses
+	// from one address cannot share the last free attempt.
+	ok, wait, slot := s.loginLimit.reserve(ip, time.Now())
+	if !ok {
+		writeRetryAfter(w, wait)
+		return
+	}
+	tok := strings.TrimSpace(body.Token)
+	_, err := s.issueSession(w, r, "token", "", func() bool { return s.noAuth || s.validToken(tok) })
+	if errors.Is(err, errBadCredential) {
 		time.Sleep(400 * time.Millisecond)
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "wrong token"})
 		return
 	}
-	s.setSessionCookie(w)
+	s.loginLimit.refund(ip, slot)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// writeRetryAfter answers 429 with how long to wait.
+func writeRetryAfter(w http.ResponseWriter, wait time.Duration) {
+	writeRetryAfterReason(w, wait, "limit")
+}
+
+// writeRetryAfterReason: reason "cooldown" is a short pause between two
+// prompts on the device, "limit" is too many attempts.
+func writeRetryAfterReason(w http.ResponseWriter, wait time.Duration, reason string) {
+	secs := int(wait/time.Second) + 1
+	w.Header().Set("Retry-After", strconv.Itoa(secs))
+	msg := "too many attempts"
+	if reason == "cooldown" {
+		msg = "a new code is coming shortly"
+	}
+	writeJSON(w, http.StatusTooManyRequests, map[string]any{"error": msg, "reason": reason, "retryIn": secs})
 }
 
 func (s *server) handleSession(w http.ResponseWriter, r *http.Request) {

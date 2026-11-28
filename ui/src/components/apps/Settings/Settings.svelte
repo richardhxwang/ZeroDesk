@@ -157,6 +157,102 @@
 
 	// ---- general ----
 	let confirm_restart = $state(false);
+
+	// ---- ZeroDesk › signed-in browsers and names ----
+	type Browser = { id: string; method: string; user_agent: string; ip: string; created_at: string; last_seen: string; current: boolean };
+	let browsers = $state<Browser[]>([]);
+	let names = $state<string[]>([]);
+	// what the device reported; null until read, or when it cannot be read
+	let pair_confirm = $state<'code' | 'ok' | null>(null);
+	let name_draft = $state('');
+	let confirm_reset = $state(false);
+
+	async function load_access() {
+		const n = ++pair_seq;
+		try {
+			const [b, h, p] = await Promise.all([
+				api<{ sessions: Browser[] }>('/api/sessions'),
+				api<{ hosts: string[] }>('/api/hosts'),
+				api<{ confirm: 'code' | 'ok' }>('/api/pairing'),
+			]);
+			browsers = b.sessions;
+			names = h.hosts ?? [];
+			if (n === pair_seq) pair_confirm = p.confirm; // a later read or save decides otherwise
+		} catch (e) {
+			error = (e as Error).message;
+			if (n === pair_seq) await read_pair_confirm();
+		}
+	}
+	$effect(() => {
+		if (pane === 'general') void load_access();
+	});
+
+	/** "Chrome on macOS" from a user agent, enough to tell browsers apart */
+	function browser_label(ua: string): string {
+		const name = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '';
+		const os = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Mac OS X/.test(ua) ? 'macOS' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : '';
+		if (name && os) return t('settings.browser_on', { name, os });
+		return name || os || t('settings.browser_unknown');
+	}
+
+	async function sign_out_browser(b: Browser) {
+		if (b.current) return void logout();
+		try {
+			await api(`/api/sessions/${encodeURIComponent(b.id)}`, { method: 'DELETE' });
+		} catch (e) {
+			error = (e as Error).message;
+		}
+		await load_access();
+	}
+
+	async function reset_access() {
+		confirm_reset = false;
+		try {
+			await post('/api/sessions/reset', {});
+		} catch (e) {
+			error = (e as Error).message;
+		}
+		await load_access();
+	}
+
+	// The page only ever shows what the device reports. After every save,
+	// whether it seemed to work or not, the setting is read back; if that
+	// fails too the control is locked and the page says it cannot tell.
+	let pair_saving = $state(false);
+	// Every read and save takes a number; only the newest one's answer is
+	// shown, so a slow earlier read cannot overwrite a later one.
+	let pair_seq = 0;
+	async function read_pair_confirm() {
+		const n = ++pair_seq;
+		let v: 'code' | 'ok' | null;
+		try {
+			v = (await api<{ confirm: 'code' | 'ok' }>('/api/pairing')).confirm;
+		} catch {
+			v = null;
+		}
+		if (n === pair_seq) pair_confirm = v;
+	}
+	async function set_pair_confirm(v: 'code' | 'ok') {
+		if (pair_saving || pair_confirm === null || v === pair_confirm) return;
+		pair_saving = true;
+		pair_seq++; // any read already on its way is now out of date
+		try {
+			await api('/api/pairing', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: v }) });
+		} catch (e) {
+			error = (e as Error).message;
+		}
+		await read_pair_confirm();
+		pair_saving = false;
+	}
+
+	async function save_names(list: string[]) {
+		try {
+			names = ((await api<{ hosts: string[] }>('/api/hosts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hosts: list }) })).hosts) ?? [];
+			name_draft = '';
+		} catch (e) {
+			error = (e as Error).message;
+		}
+	}
 	let restarting = $state(false);
 	async function restart() {
 		restarting = true;
@@ -488,6 +584,63 @@
 						<span class="grow">{t('settings.session')}</span>
 						<button class="btn" onclick={logout}>{t('settings.logout')}</button>
 					</div>
+					<div class="row">
+						<span class="grow">{t('settings.pair_confirm')}<small class="muted">{pair_confirm === null ? t('settings.pair_confirm_unknown') : pair_confirm === 'code' ? t('settings.pair_confirm_code_note') : t('settings.pair_confirm_ok_note')}</small></span>
+						{#if pair_confirm !== null}
+							<!-- shown only when the device said which mode it uses -->
+							<span class="pair-mode" inert={pair_saving}>
+								<Segmented
+									options={[
+										{ value: 'code', label: t('settings.pair_confirm_code') },
+										{ value: 'ok', label: t('settings.pair_confirm_ok') },
+									]}
+									value={pair_confirm}
+									onchange={(v) => set_pair_confirm(v as 'code' | 'ok')}
+								/>
+							</span>
+						{:else}
+							<button class="btn" onclick={read_pair_confirm}>{t('desktop.retry')}</button>
+						{/if}
+					</div>
+				</div>
+				<h2>{t('settings.browsers')}</h2>
+				<div class="card">
+					{#each browsers as b (b.id)}
+						<div class="row browser">
+							<span class="grow">
+								<span>{browser_label(b.user_agent)}{#if b.current}<span class="tag">{t('settings.this_browser')}</span>{/if}</span>
+								<small class="muted">{b.ip} · {new Date(b.last_seen).toLocaleString(locale_of(), { dateStyle: 'medium', timeStyle: 'short' })}</small>
+							</span>
+							<button class="btn" onclick={() => sign_out_browser(b)}>{t('settings.logout')}</button>
+						</div>
+					{/each}
+					<div class="row">
+						{#if confirm_reset}
+							<span class="grow muted">{t('settings.reset_access_confirm')}</span>
+							<button class="btn" onclick={() => (confirm_reset = false)}>{t('settings.cancel')}</button>
+							<button class="btn danger" onclick={reset_access}>{t('settings.reset_access')}</button>
+						{:else}
+							<span class="grow">{t('settings.reset_access_label')}</span>
+							<button class="btn" onclick={() => (confirm_reset = true)}>{t('settings.reset_access')}</button>
+						{/if}
+					</div>
+				</div>
+				<h2>{t('settings.names')}</h2>
+				<div class="card">
+					<div class="row"><span class="grow">{s.hostname}.local</span></div>
+					{#each names as n (n)}
+						<div class="row">
+							<span class="grow">{n}</span>
+							<button class="btn" onclick={() => save_names(names.filter((x) => x !== n))}>{t('settings.remove')}</button>
+						</div>
+					{/each}
+					<form class="row" onsubmit={(e) => (e.preventDefault(), name_draft.trim() && save_names([...names, name_draft]))}>
+						<!-- Add appears only once there is something to add, inside the field so nothing moves -->
+						<span class="add-field grow">
+							<input class="field" placeholder={t('settings.name_placeholder')} aria-label={t('settings.names')} bind:value={name_draft} />
+							<button class="add" type="submit" class:shown={!!name_draft.trim()} tabindex={name_draft.trim() ? 0 : -1} aria-hidden={!name_draft.trim()}>{t('settings.add')}</button>
+						</span>
+					</form>
 				</div>
 				<div class="restart-bar">
 					{#if restarting}
@@ -835,6 +988,24 @@
 		}
 	}
 
+	.pair-mode[inert] {
+		opacity: 0.6;
+	}
+
+	.row.browser {
+		padding: 10px 0;
+
+		.grow {
+			gap: 3px;
+		}
+
+		.tag {
+			margin-left: 8px;
+			color: var(--zd-text-secondary);
+			font-size: 11px;
+		}
+	}
+
 	.grow {
 		flex: 1;
 		min-width: 0;
@@ -968,6 +1139,41 @@
 	@keyframes spin {
 		to {
 			transform: rotate(360deg);
+		}
+	}
+
+	.add-field {
+		position: relative;
+		flex-direction: row;
+
+		.field {
+			width: 100%;
+			padding-right: 64px;
+		}
+
+		.add {
+			position: absolute;
+			top: 3px;
+			right: 3px;
+			height: 20px;
+			padding: 0 10px;
+			border-radius: 5px;
+			background: var(--zd-hover);
+			color: var(--zd-text);
+			font-size: 12px;
+			font-weight: 500;
+			opacity: 0;
+			transform: scale(0.92);
+			pointer-events: none;
+			transition:
+				opacity 0.14s ease,
+				transform 0.14s ease;
+
+			&.shown {
+				opacity: 1;
+				transform: none;
+				pointer-events: auto;
+			}
 		}
 	}
 

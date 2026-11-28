@@ -268,6 +268,8 @@
 						</div>
 						<span class="label">{title}</span>
 						{#if info}<span class="sub">{t('installer.version', { v: info.version })}{info.size_kb ? ` · ${format_bytes(info.size_kb * 1024)}` : ''}</span>{/if}
+						<!-- where the package came from: a local file is not from the App Store -->
+						<span class="sub source" title={installer.file ? file_name : path}>{installer.file ? t('installer.from_computer', { name: file_name }) : t('installer.from_device', { path: path.replace(/^\/home\/[^/]+/, '~') })}</span>
 					</div>
 
 					<svg class="arrow" viewBox="0 0 64 16" width="64" height="16" aria-hidden="true">
@@ -512,6 +514,12 @@
 		font-size: 11px;
 		color: var(--zd-text-secondary);
 		white-space: nowrap;
+	}
+
+	.source {
+		max-width: 200px;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	/* Finder's progress and alert panels sit over the window's content */

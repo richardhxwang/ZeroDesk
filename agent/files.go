@@ -100,6 +100,7 @@ func handleFsList(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleFsGet(w http.ResponseWriter, r *http.Request) {
+	setFileSafetyHeaders(w.Header()) // on every answer, errors included
 	p, err := cleanPath(r.URL.Query().Get("path"))
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -120,11 +121,31 @@ func handleFsGet(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", ct)
 	}
 	disp := "inline"
-	if r.URL.Query().Get("download") == "1" {
+	if r.URL.Query().Get("download") == "1" || activeContent(p) {
 		disp = "attachment"
 	}
 	w.Header().Set("Content-Disposition", fmt.Sprintf("%s; filename*=UTF-8''%s", disp, urlPathEscape(filepath.Base(p))))
 	http.ServeContent(w, r, filepath.Base(p), st.ModTime(), f)
+}
+
+// activeContent: files a browser would run as a page (HTML, SVG, XML,
+// scripts). Opened from a link they would run with ZeroDesk's origin and its
+// sign-in, so they are always downloaded. <img>, <audio>, <video> and fetch()
+// ignore Content-Disposition, so previews still work.
+func activeContent(p string) bool {
+	switch strings.ToLower(filepath.Ext(p)) {
+	case ".html", ".htm", ".xhtml", ".shtml", ".svg", ".svgz", ".xml", ".xsl", ".xslt", ".js", ".mjs":
+		return true
+	}
+	return false
+}
+
+// setFileSafetyHeaders makes a served file inert as a page: no type
+// sniffing, and if a browser shows it anyway it runs in an opaque sandbox
+// with no scripts.
+func setFileSafetyHeaders(h http.Header) {
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Content-Security-Policy", "sandbox; default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'")
 }
 
 func urlPathEscape(s string) string {

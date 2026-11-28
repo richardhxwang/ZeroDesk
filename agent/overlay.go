@@ -24,14 +24,14 @@ var cjkFontPaths = []string{
 }
 
 type promptText struct {
-	title, question, allow, anyKey, deny string
+	title, question, confirm, allow, cancelKey, deny string
 }
 
 func promptFor(lang string) promptText {
 	if lang == "zh" {
-		return promptText{"ZeroDesk", "连接这台电脑？", "允许", "其他键", "拒绝"}
+		return promptText{"ZeroDesk", "请输入浏览器上显示的连接码", "请核对浏览器上的连接码", "允许", "esc", "拒绝"}
 	}
-	return promptText{"ZeroDesk", "Connect this computer?", "Allow", "Any key", "Deny"}
+	return promptText{"ZeroDesk", "Type the code from your browser", "Check the code in your browser", "Allow", "esc", "Deny"}
 }
 
 func loadFont(lang string) (*opentype.Font, error) {
@@ -96,8 +96,12 @@ func fillRoundRect(dst *image.RGBA, r image.Rectangle, radius float64, c color.R
 	}
 }
 
-// renderPrompt returns the prompt as row-packed RGB565 (w*h*2 bytes).
-func renderPrompt(w, h int, code, lang string) ([]byte, error) {
+// renderPrompt returns the prompt as row-packed RGB565 (w*h*2 bytes). When
+// the code is typed on the device (show == ""), it is shown only in the
+// browser and the device shows one slot per digit with what has been typed
+// so far. When pairing is set to confirm with OK, the device shows the code
+// (show) to compare with the browser.
+func renderPrompt(w, h int, typed string, slots int, show, from, lang string) ([]byte, error) {
 	f, err := loadFont(lang)
 	if err != nil {
 		return nil, fmt.Errorf("font: %w", err)
@@ -111,26 +115,36 @@ func renderPrompt(w, h int, code, lang string) ([]byte, error) {
 	accent := white
 
 	small := face(f, 12)
-	mid := face(f, 17)
-	codeFace := face(f, 40)
+	mid := face(f, 16)
+	codeFace := face(f, 30)
 	keyFace := face(f, 11)
 	cx := w / 2
 
-	drawCentered(img, small, t.title, cx, 24, dim)
-	drawCentered(img, mid, t.question, cx, 50, white)
-
-	// code with generous letter spacing
-	spaced := []rune(code)
-	gap := 10
-	total := 0
-	for _, r := range spaced {
-		total += textWidth(codeFace, string(r))
+	title := t.title
+	if from != "" { // who is asking, so a request from an unknown address stands out
+		title += " · " + from
 	}
-	total += gap * (len(spaced) - 1)
-	x := cx - total/2
-	for _, r := range spaced {
-		drawText(img, codeFace, string(r), x, 102, accent)
-		x += textWidth(codeFace, string(r)) + gap
+	drawCentered(img, small, title, cx, 24, dim)
+	question := t.question
+	digits := []rune(typed)
+	if show != "" {
+		question, digits, slots = t.confirm, []rune(show), len([]rune(show))
+	}
+	drawCentered(img, mid, question, cx, 48, white)
+
+	// one slot per digit; typed digits are drawn in their slot
+	const slotW, slotH, gap = 38, 44, 10
+	x := cx - (slots*slotW+(slots-1)*gap)/2
+	for i := 0; i < slots; i++ {
+		bg := color.RGBA{38, 38, 42, 255}
+		if show == "" && i == len(digits) {
+			bg = color.RGBA{58, 58, 62, 255} // the next digit goes here
+		}
+		fillRoundRect(img, image.Rect(x, 62, x+slotW, 62+slotH), 8, bg)
+		if i < len(digits) {
+			drawCentered(img, codeFace, string(digits[i]), x+slotW/2, 62+slotH/2+11, accent)
+		}
+		x += slotW + gap
 	}
 
 	// key hints: [OK] Allow     [ESC] Deny
@@ -142,10 +156,10 @@ func renderPrompt(w, h int, code, lang string) ([]byte, error) {
 		return kw + 7 + textWidth(small, label)
 	}
 	okW := textWidth(keyFace, "OK") + 14 + 7 + textWidth(small, t.allow)
-	escW := textWidth(keyFace, t.anyKey) + 14 + 7 + textWidth(small, t.deny)
+	escW := textWidth(keyFace, t.cancelKey) + 14 + 7 + textWidth(small, t.deny)
 	start := cx - (okW+28+escW)/2
 	start += hint("OK", t.allow, start) + 28
-	hint(t.anyKey, t.deny, start)
+	hint(t.cancelKey, t.deny, start)
 
 	out := make([]byte, w*h*2)
 	for y := 0; y < h; y++ {
@@ -166,19 +180,23 @@ type fbOverlay struct {
 	geo   fbGeometry
 	saved []byte
 	frame []byte
+	slots int
+	show  string
+	from  string
+	lang  string
 }
 
-func newFBOverlay(path string, code, lang string) (*fbOverlay, error) {
+func newFBOverlay(path string, slots int, show, from, lang string) (*fbOverlay, error) {
 	h := &screenHub{fbPath: path}
 	geo, err := h.geometry()
 	if err != nil {
 		return nil, err
 	}
-	frame, err := renderPrompt(geo.width, geo.height, code, lang)
+	frame, err := renderPrompt(geo.width, geo.height, "", slots, show, from, lang)
 	if err != nil {
 		return nil, err
 	}
-	o := &fbOverlay{path: path, geo: geo, frame: frame}
+	o := &fbOverlay{path: path, geo: geo, frame: frame, slots: slots, show: show, from: from, lang: lang}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -214,6 +232,16 @@ func writeFB(path string, geo fbGeometry, rows func(y int) []byte) error {
 		copy(m[y*geo.stride:(y+1)*geo.stride], rows(y))
 	}
 	return nil
+}
+
+// setTyped redraws the prompt with the digits typed so far.
+func (o *fbOverlay) setTyped(typed string) error {
+	frame, err := renderPrompt(o.geo.width, o.geo.height, typed, o.slots, o.show, o.from, o.lang)
+	if err != nil {
+		return err
+	}
+	o.frame = frame
+	return o.paint()
 }
 
 func (o *fbOverlay) paint() error {

@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -293,8 +294,14 @@ func handleStoreAsset(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not an App Store asset", http.StatusBadRequest)
 		return
 	}
+	// icons and screenshots only: anything else could be served as a page
+	ext := strings.ToLower(filepath.Ext(u.Path))
+	if !storeImageExt[ext] {
+		http.Error(w, "not an image", http.StatusBadRequest)
+		return
+	}
 	sum := sha1.Sum([]byte(raw))
-	path := filepath.Join(storeCacheDir("assets"), hex.EncodeToString(sum[:])+strings.ToLower(filepath.Ext(u.Path)))
+	path := filepath.Join(storeCacheDir("assets"), hex.EncodeToString(sum[:])+ext)
 	if _, err := os.Stat(path); err != nil {
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		defer cancel()
@@ -304,8 +311,11 @@ func handleStoreAsset(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("Cache-Control", "private, max-age=86400")
+	setFileSafetyHeaders(w.Header())
 	http.ServeFile(w, r, path)
 }
+
+var storeImageExt = map[string]bool{".png": true, ".jpg": true, ".jpeg": true, ".webp": true, ".gif": true}
 
 // download saves url to path (through a temporary file), reporting bytes.
 func download(ctx context.Context, raw, path string, limit int64, progress func(done, total int64)) error {
@@ -413,6 +423,12 @@ func handleStoreInstall(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no such app"})
 		return
 	}
+	// Every app in both registries has a checksum (243/243, 2026-11-28); a
+	// package without one is not installed rather than installed unchecked.
+	if !validSHA256(app.Download.SHA256) {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "the App Store has no valid checksum for this package, so it cannot be checked"})
+		return
+	}
 	if !storeInstallLock.TryLock() {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "another app is being installed"})
 		return
@@ -421,37 +437,97 @@ func handleStoreInstall(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Minute)
 	defer cancel()
-	err = withAdmin(ctx, body.Password, func() error {
-		lw := newLineStream(w)
-		path := filepath.Join(storeCacheDir("packages"), filepath.Base(app.Download.Package+"_"+app.Version+".deb"))
-		defer os.Remove(path)
-		last := -1
-		err := download(ctx, app.Download.URL, path, maxStoreDeb, func(done, total int64) {
-			if total <= 0 {
-				total = app.Download.Size
-			}
-			if total > 0 {
-				if p := int(done * 100 / total); p != last {
-					last = p
-					lw.line(fmt.Sprintf("[download] %d", p))
-				}
-			}
-		})
-		if err == nil && app.Download.SHA256 != "" {
-			var sum string
-			if sum, err = fileSHA256(path); err == nil && !strings.EqualFold(sum, app.Download.SHA256) {
-				err = errors.New("the downloaded package does not match the App Store's checksum")
+	// The password is checked first (the page asks again if it is wrong),
+	// but root is only held for dpkg/apt: the download and the checksum run
+	// as the device user.
+	if writeAdminError(w, checkAdmin(ctx, body.Password), nil) {
+		return
+	}
+	lw := newLineStream(w)
+	path := filepath.Join(storeCacheDir("packages"), filepath.Base(app.Download.Package+"_"+app.Version+".deb"))
+	defer os.Remove(path)
+	last := -1
+	err = download(ctx, app.Download.URL, path, maxStoreDeb, func(done, total int64) {
+		if total <= 0 {
+			total = app.Download.Size
+		}
+		if total > 0 {
+			if p := int(done * 100 / total); p != last {
+				last = p
+				lw.line(fmt.Sprintf("[download] %d", p))
 			}
 		}
-		if err != nil {
-			lw.line("[exit] " + err.Error())
-			return nil
-		}
-		lw.run(ctx, installCmd(ctx, path))
-		log.Printf("store: installed %s %s", app.Download.Package, app.Version)
-		return nil
 	})
-	writeAdminError(w, err, nil)
+	if err == nil {
+		var sum string
+		if sum, err = fileSHA256(path); err == nil && !strings.EqualFold(sum, app.Download.SHA256) {
+			err = errors.New("the downloaded package does not match the App Store's checksum")
+		}
+	}
+	if err == nil {
+		adminMu.Lock()
+		lw.run(ctx, storeRootInstallCmd(ctx, path, app.Download.SHA256, body.Password, !sudoWithoutPassword(ctx)))
+		adminMu.Unlock()
+	}
+	if err != nil {
+		lw.line("[exit] " + err.Error())
+		return
+	}
+	log.Printf("store: installed %s %s", app.Download.Package, app.Version)
+}
+
+func validSHA256(s string) bool {
+	if len(s) != 64 {
+		return false
+	}
+	for _, c := range s {
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F') {
+			return false
+		}
+	}
+	return true
+}
+
+// storeRootInstallScript runs as root: it copies the package into a
+// directory only root can write, checks the checksum again on that copy and
+// installs exactly that copy, so the file in the device user's cache can
+// change after the first check without effect.
+const storeRootInstallScript = `set -e
+exec </dev/null
+src=$1; sum=$2; max=$3; shift 3
+d=$(mktemp -d /tmp/zerodesk-pkg.XXXXXX)
+trap 'rm -rf "$d"' EXIT
+head -c "$((max + 1))" -- "$src" > "$d/p.deb"
+if [ "$(wc -c < "$d/p.deb")" -gt "$max" ]; then
+	echo "the package is larger than the App Store allows"
+	exit 1
+fi
+if ! echo "$sum  $d/p.deb" | sha256sum -c --status; then
+	echo "the package changed after it was checked"
+	exit 1
+fi
+"$@" "$d/p.deb"`
+
+// storeRootInstallCmd installs a checked Store package with one root
+// command. With a password, sudo runs with -k: it asks for the password
+// for this command only and leaves no cached credential that something
+// else could use while dependencies download.
+func storeRootInstallCmd(ctx context.Context, path, sha, password string, needPassword bool) *exec.Cmd {
+	inner := []string{"env", "DEBIAN_FRONTEND=noninteractive", "apt-get", "install", "-y", "--no-install-recommends",
+		"-o", "Dpkg::Use-Pty=0", "-o", "APT::Status-Fd=1"}
+	if f, err := debControl(ctx, path); err == nil && dependsSatisfied(f["Pre-Depends"]+", "+f["Depends"], installedPackages()) {
+		inner = []string{"env", "DEBIAN_FRONTEND=noninteractive", "dpkg", "--status-fd", "1", "-i"}
+	}
+	prefix := []string{"-n"}
+	if needPassword {
+		prefix = []string{"-k", "-S", "-p", ""}
+	}
+	args := append(prefix, "sh", "-c", storeRootInstallScript, "sh", path, strings.ToLower(sha), strconv.FormatInt(int64(maxStoreDeb), 10))
+	cmd := exec.CommandContext(ctx, "sudo", append(args, inner...)...)
+	if prefix[0] != "-n" {
+		cmd.Stdin = strings.NewReader(password + "\n")
+	}
+	return cmd
 }
 
 // installCmd installs a local .deb. When everything it depends on is

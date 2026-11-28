@@ -37,7 +37,7 @@ func TestRenderScreen(t *testing.T) {
 		}
 	}
 	if dir != "" {
-		buf, err := renderPrompt(320, 170, "4821", "en")
+		buf, err := renderPrompt(320, 170, "48", 4, "", "192.168.1.23", "en")
 		if err != nil {
 			t.Fatal(err)
 		}

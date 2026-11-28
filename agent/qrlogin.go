@@ -122,11 +122,18 @@ func takeQRKey(path, given string, now time.Time) bool {
 func (s *server) handleQRLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Referrer-Policy", "no-referrer")
-	if takeQRKey(qrKeyPath(), r.PathValue("key"), time.Now()) {
-		s.setSessionCookie(w)
-		log.Printf("pair: signed in with the device QR code (%s)", clientIP(r))
+	ip := clientIP(r)
+	if ok, _, slot := s.loginLimit.reserve(ip, time.Now()); !ok {
+		log.Printf("pair: QR sign-in refused, too many attempts (%s)", ip)
+	} else if takeQRKey(qrKeyPath(), r.PathValue("key"), time.Now()) {
+		s.loginLimit.refund(ip, slot)
+		if err := s.startSession(w, r, "qr"); err != nil {
+			log.Printf("pair: QR sign-in: %v", err)
+		} else {
+			log.Printf("pair: signed in with the device QR code (%s)", ip)
+		}
 	} else {
-		log.Printf("pair: QR code not accepted, expired or already used (%s)", clientIP(r))
+		log.Printf("pair: QR code not accepted, expired or already used (%s)", ip)
 	}
 	// on failure the browser lands on the pairing page as usual
 	http.Redirect(w, r, "/", http.StatusSeeOther)

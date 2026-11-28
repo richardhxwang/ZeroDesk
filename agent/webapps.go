@@ -298,6 +298,7 @@ func findWebApp(id string) *webApp {
 type webSession struct {
 	app     string
 	created time.Time
+	owner   string // browser session that opened the window ("" for scripts)
 }
 
 type webBackend struct {
@@ -313,6 +314,13 @@ type webApps struct {
 	backends map[string]*webBackend
 	starting map[string]*sync.Mutex
 	apps     *appManager
+	// ownerAlive reports whether a browser session is still signed in; a
+	// window stops working the moment the browser that opened it is signed
+	// out. nil with -no-auth.
+	ownerAlive func(id string) bool
+	// track registers long-lived requests (a backend's event stream) under
+	// the window's owner, so they close when it is signed out.
+	track func(owner string, w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *http.Request, func())
 }
 
 func newWebApps(apps *appManager) *webApps {
@@ -407,7 +415,15 @@ func (wa *webApps) handleSessionOpen(w http.ResponseWriter, r *http.Request) {
 			delete(wa.sessions, k)
 		}
 	}
-	wa.sessions[capability] = webSession{app: a.ID, created: now}
+	owner, _ := sessionFrom(r)
+	// Checked under wa.mu: a sign-out that already happened is seen here,
+	// and one that happens later finds this window in revokeOwner.
+	if owner.ID != "" && wa.ownerAlive != nil && !wa.ownerAlive(owner.ID) {
+		wa.mu.Unlock()
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	wa.sessions[capability] = webSession{app: a.ID, created: now, owner: owner.ID}
 	if be := wa.backends[a.ID]; be != nil && be.stopAt != nil {
 		be.stopAt.Stop()
 		be.stopAt = nil
@@ -427,6 +443,26 @@ func (wa *webApps) handleSessionClose(w http.ResponseWriter, r *http.Request) {
 	}
 	wa.mu.Unlock()
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// revokeOwner closes the web-app windows a browser session opened, when that
+// session signs out or is removed in Settings.
+func (wa *webApps) revokeOwner(owner string) {
+	if owner == "" {
+		return
+	}
+	wa.mu.Lock()
+	defer wa.mu.Unlock()
+	apps := map[string]bool{}
+	for k, s := range wa.sessions {
+		if s.owner == owner {
+			delete(wa.sessions, k)
+			apps[s.app] = true
+		}
+	}
+	for app := range apps {
+		wa.scheduleStopLocked(app)
+	}
 }
 
 func (wa *webApps) deviceAppRunning(id string) bool {
@@ -544,12 +580,32 @@ func (wa *webApps) handleCap(w http.ResponseWriter, r *http.Request) {
 	capability, rest, _ := strings.Cut(strings.TrimPrefix(r.URL.Path, "/x/"), "/")
 	wa.mu.Lock()
 	s, ok := wa.sessions[capability]
+	if ok && (time.Since(s.created) > webAppSessionTTL || s.owner != "" && wa.ownerAlive != nil && !wa.ownerAlive(s.owner)) {
+		delete(wa.sessions, capability)
+		wa.scheduleStopLocked(s.app)
+		ok = false
+	}
 	wa.mu.Unlock()
+	if ok && testHookAfterAuth != nil {
+		testHookAfterAuth()
+	}
+	if ok && wa.track != nil {
+		var done func()
+		w, r, done = wa.track(s.owner, w, r)
+		defer done()
+		// checked again once registered (a sign-out in between is caught here)
+		if s.owner != "" && wa.ownerAlive != nil && !wa.ownerAlive(s.owner) {
+			ok = false
+		}
+	}
 	h := w.Header()
-	// the page runs in an opaque-origin sandbox: the path is the credential
+	// The page runs in an opaque-origin sandbox: the path is the credential.
+	// The CSP sandbox keeps it opaque even when the URL is opened on its own,
+	// outside the desktop's sandboxed frame (same flags as that frame).
 	h.Set("Access-Control-Allow-Origin", "*")
 	h.Set("Cross-Origin-Resource-Policy", "cross-origin")
-	h.Set("Content-Security-Policy", "frame-ancestors 'self'")
+	h.Set("Content-Security-Policy", "sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-pointer-lock; frame-ancestors 'self'")
+	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Referrer-Policy", "no-referrer")
 	if r.Method == http.MethodOptions {
 		h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE")
