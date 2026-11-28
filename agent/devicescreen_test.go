@@ -61,3 +61,24 @@ func writePNG(t *testing.T, path string, img image.Image) {
 		t.Fatal(err)
 	}
 }
+
+// The screen while S is being acted on: no S hint, the status says what is happening.
+func TestRenderScreenPending(t *testing.T) {
+	dir := os.Getenv("ZERODESK_PREVIEW_DIR")
+	for _, lang := range []string{"en", "zh"} {
+		for _, pending := range []string{"starting", "stopping"} {
+			running := pending == "stopping"
+			info := screenInfo{Running: running, Host: "cardputerzero.local", Addrs: []string{"192.0.2.10"}, Port80: true, Lang: lang, Pending: pending}
+			if running {
+				info.QR = qrLoginURL("192.0.2.10", true, "aaaaaaaaaaaaaaaa")
+			}
+			img, err := renderScreen(320, 170, info)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if dir != "" {
+				writePNG(t, filepath.Join(dir, "screen_"+lang+"_"+pending+".png"), img)
+			}
+		}
+	}
+}

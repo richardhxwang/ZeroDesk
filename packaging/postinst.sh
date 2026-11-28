@@ -47,6 +47,21 @@ if [ "$1" = "configure" ]; then
 			echo "zerodesk-cp0: cannot write $dropin; add User=$user and Group=$group under [Service] by hand" >&2
 		fi
 	fi
+	# /run/zerodesk-cp0, where the launcher entry asks for ZeroDesk to start
+	# (zerodesk-cp0.path), belongs to the device user
+	tmpconf=/etc/tmpfiles.d/zerodesk-cp0.conf
+	if [ -n "$user" ] && [ "$user" != pi ]; then
+		group=$(id -gn "$user" 2>/dev/null || echo "$user")
+		{
+			echo "# Written by the zerodesk-cp0 package: this device's account is '$user', not 'pi'."
+			echo "d /run/zerodesk-cp0 0755 $user $group -"
+		} > "$tmpconf" 2>/dev/null || echo "zerodesk-cp0: cannot write $tmpconf" >&2
+	else
+		rm -f "$tmpconf" 2>/dev/null || true
+	fi
+	if command -v systemd-tmpfiles >/dev/null 2>&1; then
+		systemd-tmpfiles --create zerodesk-cp0.conf >/dev/null 2>&1 || true
+	fi
 	# serve http://cardputerzero.local on port 80 without running as root
 	if command -v setcap >/dev/null 2>&1; then
 		setcap cap_net_bind_service=+ep /usr/bin/zerodesk-cp0 || true
@@ -54,6 +69,7 @@ if [ "$1" = "configure" ]; then
 	if [ -d /run/systemd/system ]; then
 		systemctl daemon-reload || true
 		systemctl enable zerodesk-cp0.service >/dev/null 2>&1 || true
+		systemctl enable --now zerodesk-cp0.path >/dev/null 2>&1 || true
 		# Restart a few seconds after dpkg finishes, from a unit outside the
 		# service's cgroup: ZeroDesk installs .deb files itself (Finder), so
 		# the running service may be the very process running this install,

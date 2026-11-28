@@ -75,7 +75,9 @@ Nothing is left out of the Store edition yet. Planned native apps for the NFC, S
 
 ## Launcher entry
 
-`/usr/bin/zerodesk-cp0-screen` (a link to `zerodesk-cp0`, `agent/devicescreen.go`) is the app the launcher starts: a 320×170 status screen with ZeroDesk's state and the address to open on a computer, ESC to quit. It reads the keyboard without grabbing it, so the service can still grab it for a pairing prompt; while that prompt is up (`$XDG_RUNTIME_DIR/zerodesk-pairing` exists) it does not redraw.
+`/usr/bin/zerodesk-cp0-screen` (a link to `zerodesk-cp0`, `agent/devicescreen.go`) is the app the launcher starts: a 320×170 status screen with ZeroDesk's state and the address to open on a computer, ESC to quit, S to shut ZeroDesk down or start it again.
+
+Shut Down and Restart (ZeroDesk menu, `POST /api/zerodesk/power`, `agent/power.go`) act on ZeroDesk, not on the device. Shut Down exits with status 0, which `Restart=on-failure` leaves alone, so ZeroDesk stays off until the next boot; Restart execs the binary again in place (same PID). The screen shuts it down through the same endpoint (it runs as the same user and reads the token). It cannot start a system service itself, and Store packages may not install polkit rules, so the package ships `zerodesk-cp0.path`: it starts `zerodesk-cp0.service` when `/run/zerodesk-cp0/start` changes, a directory owned by the device user (`/usr/lib/tmpfiles.d/zerodesk-cp0.conf`, overridden in `/etc/tmpfiles.d/` by postinst when the account is not `pi`). A development install (user unit) is started with `systemctl --user`. It reads the keyboard without grabbing it, so the service can still grab it for a pairing prompt; while that prompt is up (`$XDG_RUNTIME_DIR/zerodesk-pairing` exists) it does not redraw.
 
 ## Package
 
@@ -86,7 +88,7 @@ scripts/store-check.sh dist/zerodesk-cp0_0.4.2-1_arm64.deb
 
 `build-deb.sh` needs pnpm, Go, Docker (the virtual-screen library is compiled in an arm64 `debian:trixie` container) and Python with Pillow (`packaging/store-assets.py` makes the 100 px launcher icon and the 256 px Store icon). `store-check.sh` runs, in Docker, the same checks as `czdev publish` before it uploads anything (with a stub GitHub login) and the packages repository's validate-pr checks, using fresh clones of `CardputerZero/AppBuilder` and `CardputerZero/packages` in `.cache/`. Nothing is uploaded.
 
-Package contents: `/usr/bin/zerodesk-cp0`, `/usr/bin/zerodesk-cp0-screen`, `/usr/lib/systemd/system/zerodesk-cp0.service`, `/usr/share/APPLaunch/applications/zerodesk-cp0.desktop` and its icon, `/usr/share/zerodesk-cp0/apps/`, `/usr/lib/zerodesk-cp0/zd_vfb.so`, `/usr/share/doc/zerodesk-cp0/`. Store listing: `app-builder.json`, `store/icon.png`, `store/screenshots/` (rendered by `TestRenderScreen` with a placeholder address from 192.0.2.0/24).
+Package contents: `/usr/bin/zerodesk-cp0`, `/usr/bin/zerodesk-cp0-screen`, `/usr/lib/systemd/system/zerodesk-cp0.service` and `zerodesk-cp0.path`, `/usr/lib/tmpfiles.d/zerodesk-cp0.conf`, `/usr/share/APPLaunch/applications/zerodesk-cp0.desktop` and its icon, `/usr/share/zerodesk-cp0/apps/`, `/usr/lib/zerodesk-cp0/zd_vfb.so`, `/usr/share/doc/zerodesk-cp0/`. Store listing: `app-builder.json`, `store/icon.png`, `store/screenshots/` (rendered by `TestRenderScreen` with a placeholder address from 192.0.2.0/24).
 
 ## Deploy to a device
 

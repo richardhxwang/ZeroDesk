@@ -9,6 +9,7 @@
 	import DropToInstall from '../SystemUI/DropToInstall.svelte';
 	import Installer from '../SystemUI/Installer.svelte';
 	import PasswordSheet from '../SystemUI/PasswordSheet.svelte';
+	import PowerAlert from '../SystemUI/PowerAlert.svelte';
 	import Login from '../SystemUI/Login.svelte';
 	import TopBar from '../TopBar/TopBar.svelte';
 	import ContextMenu from './ContextMenu.svelte';
@@ -46,6 +47,7 @@
 		<DropToInstall />
 		<Installer />
 		<PasswordSheet />
+		<PowerAlert />
 		<ContextMenu target_element={main_el} />
 		<ContextMenuHost />
 	{:else if session.authed === false}

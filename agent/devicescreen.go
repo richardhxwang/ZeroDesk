@@ -26,8 +26,9 @@ import (
 
 // The ZeroDesk entry in the CardputerZero launcher (`zerodesk-screen`): a
 // small status screen with the address to open on a computer. ZeroDesk
-// itself runs as a service; this screen only shows it. Pairing prompts from
-// the service are drawn over it; ESC returns to the launcher.
+// itself runs as a service; this screen shows it, and S shuts it down or
+// starts it again. Pairing prompts from the service are drawn over it; ESC
+// returns to the launcher.
 //
 // It reads the keyboard without grabbing it, so the service can still grab it
 // to read the pairing answer.
@@ -39,6 +40,7 @@ type screenInfo struct {
 	Port80  bool
 	Lang    string
 	QR      string // sign-in link shown as a QR code; empty hides it
+	Pending string // "starting" or "stopping" while S is being acted on
 }
 
 func pairingFlagPath() string {
@@ -99,13 +101,14 @@ func launcherLang() string {
 
 type screenText struct {
 	running, stopped, open, or, exit, scan, orOpen string
+	shutDown, start, starting, stopping            string
 }
 
 func screenTextFor(lang string) screenText {
 	if lang == "zh" {
-		return screenText{"运行中", "未运行", "在电脑浏览器中打开", "或", "退出", "扫码登录", "或在浏览器打开"}
+		return screenText{"运行中", "未运行", "在电脑浏览器中打开", "或", "退出", "扫码登录", "或在浏览器打开", "关闭", "启动", "正在启动…", "正在关闭…"}
 	}
-	return screenText{"Running", "Not running", "Open in a browser on your computer", "or", "Exit", "Scan to sign in", "or open"}
+	return screenText{"Running", "Not running", "Open in a browser on your computer", "or", "Exit", "Scan to sign in", "or open", "Shut Down", "Start", "Starting…", "Shutting down…"}
 }
 
 // appIcon decodes ZeroDesk's icon from the embedded web assets.
@@ -161,7 +164,7 @@ func renderScreen(w, h int, info screenInfo) (*image.RGBA, error) {
 	keyFace := face(f, 11)
 
 	if info.Running && info.QR != "" {
-		if renderQRScreen(img, info, t, title, small, keyFace, white, dim, green) {
+		if renderQRScreen(img, info, t, title, small, keyFace, white, dim) {
 			return img, nil
 		}
 		// the code did not fit: fall back to the address-only screen
@@ -176,6 +179,12 @@ func renderScreen(w, h int, info screenInfo) (*image.RGBA, error) {
 	status, sc := t.stopped, red
 	if info.Running {
 		status, sc = t.running, green
+	}
+	switch info.Pending {
+	case "starting":
+		status, sc = t.starting, dim
+	case "stopping":
+		status, sc = t.stopping, dim
 	}
 	sw := textWidth(small, status)
 	fillRoundRect(img, image.Rect(w-14-sw-22, 13, w-14, 33), 10, color.RGBA{40, 40, 44, 255})
@@ -194,20 +203,37 @@ func renderScreen(w, h int, info screenInfo) (*image.RGBA, error) {
 		drawText(img, small, alt, 16, 110, dim)
 	}
 
-	drawExitHint(img, t, keyFace, small, white, dim)
+	drawKeyHints(img, t, info, keyFace, small, white, dim)
 	return img, nil
 }
 
-func drawExitHint(img *image.RGBA, t screenText, keyFace, small font.Face, white, dim color.RGBA) {
-	kw := textWidth(keyFace, "ESC") + 14
-	fillRoundRect(img, image.Rect(16, 138, 16+kw, 158), 5, color.RGBA{58, 58, 62, 255})
-	drawCentered(img, keyFace, "ESC", 16+kw/2, 152, white)
-	drawText(img, small, t.exit, 16+kw+7, 153, dim)
+// drawKeyHints draws "[ESC] Exit" and "[S] Shut Down" / "[S] Start" along
+// the bottom.
+func drawKeyHints(img *image.RGBA, t screenText, info screenInfo, keyFace, small font.Face, white, dim color.RGBA) {
+	x := drawKeyHint(img, 16, 138, "ESC", t.exit, keyFace, small, white, dim)
+	if info.Pending != "" {
+		return
+	}
+	label := t.start
+	if info.Running {
+		label = t.shutDown
+	}
+	drawKeyHint(img, x+18, 138, "S", label, keyFace, small, white, dim)
+}
+
+// drawKeyHint draws one key cap (top at y) and its label from x; it returns
+// where the label ends.
+func drawKeyHint(img *image.RGBA, x, y int, key, label string, keyFace, small font.Face, white, dim color.RGBA) int {
+	kw := max(textWidth(keyFace, key)+14, 22)
+	fillRoundRect(img, image.Rect(x, y, x+kw, y+20), 5, color.RGBA{58, 58, 62, 255})
+	drawCentered(img, keyFace, key, x+kw/2, y+14, white)
+	drawText(img, small, label, x+kw+7, y+15, dim)
+	return x + kw + 7 + textWidth(small, label)
 }
 
 // renderQRScreen puts the sign-in code on the right and the name, status and
 // address on the left. It reports false when the code does not fit.
-func renderQRScreen(img *image.RGBA, info screenInfo, t screenText, title, small, keyFace font.Face, white, dim, green color.RGBA) bool {
+func renderQRScreen(img *image.RGBA, info screenInfo, t screenText, title, small, keyFace font.Face, white, dim color.RGBA) bool {
 	w, h := img.Bounds().Dx(), img.Bounds().Dy()
 	side := h - 24
 	box, err := drawQR(img, image.Rect(w-12-side, 12, w-12, 12+side), info.QR, 2)
@@ -220,12 +246,10 @@ func renderQRScreen(img *image.RGBA, info screenInfo, t screenText, title, small
 		draw.Draw(img, image.Rect(14, 12, 40, 38), ic, image.Point{}, draw.Over)
 	}
 	drawText(img, title, "ZeroDesk", 48, 31, white)
-	fillRoundRect(img, image.Rect(17, 47, 23, 53), 3, green)
-	drawText(img, small, t.running, 29, 54, dim)
 
 	label := face(mustFont(info.Lang), 15)
-	drawText(img, label, t.scan, 16, 84, white)
-	drawText(img, small, t.orOpen, 16, 106, dim)
+	drawText(img, label, t.scan, 16, 63, white)
+	drawText(img, small, t.orOpen, 16, 83, dim)
 	host := info.Host
 	if !info.Port80 {
 		host += ":8686"
@@ -237,9 +261,18 @@ func renderQRScreen(img *image.RGBA, info screenInfo, t screenText, title, small
 			break
 		}
 	}
-	drawText(img, hf, host, 16, 123, white)
+	drawText(img, hf, host, 16, 100, white)
 
-	drawExitHint(img, t, keyFace, small, white, dim)
+	// The code only shows while ZeroDesk runs, so the column has no status
+	// line: the keys go one above the other (side by side they would run
+	// into the code).
+	if info.Pending == "stopping" {
+		fillRoundRect(img, image.Rect(17, 118, 23, 124), 3, dim)
+		drawText(img, small, t.stopping, 29, 125, dim)
+	} else {
+		drawKeyHint(img, 16, 111, "S", t.shutDown, keyFace, small, white, dim)
+	}
+	drawKeyHint(img, 16, 138, "ESC", t.exit, keyFace, small, white, dim)
 	return true
 }
 
@@ -285,6 +318,7 @@ func runDeviceScreen(fbPath, kbdMatch string) int {
 	defer os.Remove(qrKeyPath())
 
 	quit := make(chan struct{})
+	toggle := make(chan struct{}, 1)
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	go func() { <-sig; close(quit) }()
@@ -311,6 +345,12 @@ func runDeviceScreen(fbPath, kbdMatch string) int {
 							}
 							return
 						}
+						if typ == evKey && code == 31 && val == 1 { // S
+							select {
+							case toggle <- struct{}{}:
+							default:
+							}
+						}
 					}
 				}
 			}()
@@ -318,12 +358,18 @@ func runDeviceScreen(fbPath, kbdMatch string) int {
 	}
 
 	var last []byte
+	var pending string
+	var pendingUntil time.Time
 	paint := func() {
 		if _, err := os.Stat(pairingFlagPath()); err == nil {
 			last = nil // the service's pairing prompt is on screen
 			return
 		}
 		info := gatherScreenInfo()
+		if pending != "" && (info.Running == (pending == "starting") || time.Now().After(pendingUntil)) {
+			pending = ""
+		}
+		info.Pending = pending
 		if info.Running && len(info.Addrs) > 0 {
 			if k, err := currentQRKey(qrKeyPath(), time.Now()); err == nil {
 				info.QR = qrLoginURL(info.Addrs[0], info.Port80, k.key)
@@ -350,6 +396,22 @@ func runDeviceScreen(fbPath, kbdMatch string) int {
 		case <-quit:
 			return 0
 		case <-tick.C:
+			paint()
+		case <-toggle:
+			if pending != "" {
+				continue
+			}
+			var err error
+			if gatherScreenInfo().Running {
+				pending, err = "stopping", stopZeroDesk()
+			} else {
+				pending, err = "starting", startZeroDesk()
+			}
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "zerodesk-screen:", err)
+				pending = ""
+			}
+			pendingUntil = time.Now().Add(15 * time.Second)
 			paint()
 		}
 	}

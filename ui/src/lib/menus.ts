@@ -2,6 +2,7 @@ import { apps_config } from '🍎/configs/apps/apps-config';
 import { apps, close_app, minimize_app, open_app, title_of } from '🍎/state/apps.svelte.ts';
 import { t } from '🍎/state/i18n.svelte.ts';
 import { preferences, toggle_lang, toggle_scheme } from '🍎/state/preferences.svelte.ts';
+import { power } from '🍎/state/power.svelte.ts';
 import { logout } from '🍎/state/session.svelte.ts';
 import { IS_MAC, terminal } from '🍎/state/terminal.svelte.ts';
 
@@ -33,7 +34,9 @@ export function build_menus(): MenuDef[] {
 					action: toggle_scheme,
 				},
 				{ label: t('menu.lang'), action: toggle_lang, break_after: true },
-				{ label: t('menu.reload'), action: () => location.reload() },
+				{ label: t('menu.reload'), action: () => location.reload(), break_after: true },
+				{ label: t('menu.restart'), action: () => (power.ask = 'restart') },
+				{ label: t('menu.shutdown'), action: () => (power.ask = 'shutdown'), break_after: true },
 				{ label: t('menu.logout'), action: logout },
 			],
 		},

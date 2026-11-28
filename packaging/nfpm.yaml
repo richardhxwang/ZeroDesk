@@ -27,6 +27,12 @@ contents:
   - src: ./zerodesk-cp0.service
     dst: /usr/lib/systemd/system/zerodesk-cp0.service
     file_info: { mode: 0644 }
+  - src: ./zerodesk-cp0.path
+    dst: /usr/lib/systemd/system/zerodesk-cp0.path
+    file_info: { mode: 0644 }
+  - src: ./zerodesk-cp0.tmpfiles
+    dst: /usr/lib/tmpfiles.d/zerodesk-cp0.conf
+    file_info: { mode: 0644 }
   - src: ./zerodesk-cp0.desktop
     dst: /usr/share/APPLaunch/applications/zerodesk-cp0.desktop
     file_info: { mode: 0644 }
