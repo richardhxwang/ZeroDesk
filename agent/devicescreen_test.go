@@ -5,6 +5,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -15,7 +16,7 @@ func TestRenderScreen(t *testing.T) {
 	dir := os.Getenv("ZERODESK_PREVIEW_DIR")
 	for _, lang := range []string{"en", "zh"} {
 		for _, running := range []bool{true, false} {
-			info := screenInfo{Running: running, Host: "cardputerzero.local", Addrs: []string{"192.0.2.10"}, Port80: true, Lang: lang}
+			info := screenInfo{Running: running, Host: "cardputerzero.local", Addrs: []string{"192.0.2.10"}, Port80: true, Lang: lang, WiFi: "Home"}
 			if running {
 				info.QR = qrLoginURL("192.0.2.10", true, "aaaaaaaaaaaaaaaa")
 			}
@@ -59,5 +60,73 @@ func writePNG(t *testing.T, path string, img image.Image) {
 	defer f.Close()
 	if err := png.Encode(f, img); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// No network address: the screen must not offer an address nobody can reach.
+func TestRenderScreenOffline(t *testing.T) {
+	dir := os.Getenv("ZERODESK_PREVIEW_DIR")
+	for _, lang := range []string{"en", "zh"} {
+		for _, running := range []bool{true, false} {
+			info := screenInfo{Running: running, Host: "cardputerzero.local", Lang: lang}
+			img, err := renderScreen(320, 170, info)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if dir != "" {
+				name := "screen_" + lang + "_offline"
+				if !running {
+					name += "_stopped"
+				}
+				writePNG(t, filepath.Join(dir, name+".png"), img)
+			}
+		}
+	}
+}
+
+// The screen while S is being acted on: no S hint, the status says what is happening.
+func TestRenderScreenPending(t *testing.T) {
+	dir := os.Getenv("ZERODESK_PREVIEW_DIR")
+	for _, lang := range []string{"en", "zh"} {
+		for _, pending := range []string{"starting", "stopping"} {
+			running := pending == "stopping"
+			info := screenInfo{Running: running, Host: "cardputerzero.local", Addrs: []string{"192.0.2.10"}, Port80: true, Lang: lang, Pending: pending}
+			if running {
+				info.QR = qrLoginURL("192.0.2.10", true, "aaaaaaaaaaaaaaaa")
+			}
+			img, err := renderScreen(320, 170, info)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if dir != "" {
+				writePNG(t, filepath.Join(dir, "screen_"+lang+"_"+pending+".png"), img)
+			}
+		}
+	}
+}
+
+func TestFitText(t *testing.T) {
+	fc := face(mustFont("en"), 12)
+	long := "Same Wi-Fi: a very long network name that cannot fit"
+	got := fitText(fc, long, 120)
+	if textWidth(fc, got) > 120 || !strings.HasSuffix(got, "…") {
+		t.Fatalf("fitText = %q (%d px)", got, textWidth(fc, got))
+	}
+	if fitText(fc, "Home", 120) != "Home" {
+		t.Fatal("short text was changed")
+	}
+}
+
+func TestFitNamedKeepsPrefixAndEnds(t *testing.T) {
+	prefix, name := "Same Wi-Fi: ", "ChinaNet-Home-Living-Room-Upstairs-5G"
+	fc, got := fitNamed("en", 11, prefix, name, 160)
+	if textWidth(fc, got) > 160 {
+		t.Fatalf("%q is %d px wide", got, textWidth(fc, got))
+	}
+	if !strings.HasPrefix(got, prefix+"Chin") || !strings.HasSuffix(got, "-5G") || !strings.Contains(got, "…") {
+		t.Fatalf("fitNamed = %q", got)
+	}
+	if _, got := fitNamed("en", 11, prefix, "Home", 160); got != prefix+"Home" {
+		t.Fatalf("short name changed: %q", got)
 	}
 }

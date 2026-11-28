@@ -485,6 +485,10 @@
 				<h2>{t('settings.zerodesk')}</h2>
 				<div class="card">
 					<div class="row">
+						<span class="grow">{t('settings.open_cardputer')}</span>
+						{@render toggle(preferences.open_cardputer, t('settings.open_cardputer'), (v) => (preferences.open_cardputer = v))}
+					</div>
+					<div class="row">
 						<span class="grow">{t('settings.session')}</span>
 						<button class="btn" onclick={logout}>{t('settings.logout')}</button>
 					</div>

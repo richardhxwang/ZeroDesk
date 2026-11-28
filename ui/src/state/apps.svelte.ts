@@ -3,6 +3,7 @@ import { api } from '🍎/lib/api.ts';
 import { create_app_config, type AppConfig } from '🍎/helpers/create-app-config.ts';
 import { t } from '🍎/state/i18n.svelte.ts';
 import { launchpad, pinned } from '🍎/state/launchpad.svelte.ts';
+import { preferences } from '🍎/state/preferences.svelte.ts';
 
 /** Built-in windows (Cardputer, Finder, …). */
 export type BuiltinID = keyof typeof apps_config;
@@ -124,11 +125,12 @@ export function open_web_app(id: string) {
 }
 
 export const apps = $state({
-	open: { ...record(false), device: true } as Record<AppID, boolean>,
+	// the Cardputer window opens by itself unless Settings › General says not to
+	open: { ...record(false), device: preferences.open_cardputer } as Record<AppID, boolean>,
 	/** minimized windows stay open but are hidden into the dock */
 	minimized: record(false) as Record<AppID, boolean>,
 
-	active: 'device' as AppID | '',
+	active: (preferences.open_cardputer ? 'device' : '') as AppID | '',
 
 	/** Maximum zIndex for the active app. Starts at -2 so the first focus becomes 0. */
 	active_z_index: -2,

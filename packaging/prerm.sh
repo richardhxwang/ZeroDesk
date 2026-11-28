@@ -2,6 +2,7 @@
 set -e
 if [ "$1" = "remove" ] || [ "$1" = "deconfigure" ]; then
 	if [ -d /run/systemd/system ]; then
+		systemctl disable --now zerodesk-cp0.path >/dev/null 2>&1 || true
 		systemctl disable --now zerodesk-cp0.service >/dev/null 2>&1 || true
 	fi
 	# web-app backends ZeroDesk started in the user's session

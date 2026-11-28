@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { elevation } from '🍎/actions';
 	import Menu from '🍎/components/TopBar/Menu.svelte';
-	import type { MenuItem } from '🍎/lib/menus.ts';
+	import { language_menu, type MenuItem } from '🍎/lib/menus.ts';
 	import { open_app } from '🍎/state/apps.svelte.ts';
 	import { t } from '🍎/state/i18n.svelte.ts';
-	import { preferences, toggle_lang, toggle_scheme } from '🍎/state/preferences.svelte.ts';
+	import { preferences, toggle_scheme } from '🍎/state/preferences.svelte.ts';
 
 	const { target_element }: { target_element?: HTMLElement } = $props();
 
@@ -17,7 +17,7 @@
 		{ label: t('app.terminal'), action: () => open_app('terminal') },
 		{ label: t('app.launchpad'), action: () => open_app('launchpad'), break_after: true },
 		{ label: preferences.theme.scheme === 'dark' ? t('menu.light') : t('menu.dark'), action: toggle_scheme },
-		{ label: t('menu.lang'), action: toggle_lang, break_after: true },
+		language_menu(true),
 		{ label: t('menu.settings'), action: () => open_app('settings') },
 	]);
 

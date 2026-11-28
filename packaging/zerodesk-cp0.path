@@ -1,0 +1,12 @@
+# Starts ZeroDesk again after Shut Down: the launcher entry (S on its screen)
+# writes /run/zerodesk-cp0/start, which the device user owns
+# (zerodesk-cp0.tmpfiles). Writing it while ZeroDesk runs does nothing.
+[Unit]
+Description=Start ZeroDesk from its launcher entry
+
+[Path]
+PathChanged=/run/zerodesk-cp0/start
+Unit=zerodesk-cp0.service
+
+[Install]
+WantedBy=paths.target

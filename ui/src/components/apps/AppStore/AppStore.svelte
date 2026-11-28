@@ -1,15 +1,12 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { api, api_error } from '🍎/lib/api.ts';
-	import { as_admin, Cancelled } from '🍎/state/admin.svelte.ts';
 	import { open_device_app } from '🍎/state/apps.svelte.ts';
 	import { format_bytes, format_date, t } from '🍎/state/i18n.svelte.ts';
 	import { preferences } from '🍎/state/preferences.svelte.ts';
 	import { revalidate } from '🍎/lib/swr.svelte.ts';
 	import { data } from '🍎/state/app_preload.ts';
-	import { notify } from '🍎/state/notifications.svelte.ts';
-	import { store_state, type StoreApp } from '🍎/state/appstore.svelte.ts';
-	import { install_progress } from '🍎/lib/install_progress.ts';
+	import { cancel_queued, enqueue, store_state, type StoreApp } from '🍎/state/appstore.svelte.ts';
 
 	// The App Store, laid out like the Mac App Store: a sidebar (search,
 	// Discover, Categories, Updates) and pages of apps with a Get button
@@ -153,54 +150,18 @@
 
 	// ---- Get / Update / Open ----
 
-	async function get(a: StoreApp) {
-		if (store_state.tasks[a.id]) return;
-		store_state.tasks[a.id] = { pct: 0, phase: 'auth' };
-		try {
-			const res = await as_admin(
-				async (password) => {
-					// spin right away once the password is entered
-					if (password) store_state.tasks[a.id] = { pct: 0, phase: 'waiting' };
-					const r = await fetch('/api/store/install', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ id: a.id, password }),
-					});
-					if (!r.ok) {
-						store_state.tasks[a.id] = { pct: 0, phase: 'auth' };
-						throw await api_error(r);
-					}
-					store_state.tasks[a.id] = { pct: 0, phase: 'waiting' };
-					return r;
-				},
-				{ title: t('admin.install_title'), action: t('admin.install_ok'), app: { name: title(a), icon: a.icon }, source: 'App Store', short: t(a.update ? 'store.update' : 'phone.install') },
-			);
-			const reader = res.body!.getReader();
-			const dec = new TextDecoder();
-			let log = '';
-			for (;;) {
-				const { value, done } = await reader.read();
-				if (done) break;
-				log += dec.decode(value, { stream: true });
-				const p = install_progress(log, true);
-				store_state.tasks[a.id] = { pct: p ?? 0, phase: p === null ? 'waiting' : 'progress' };
-			}
-			const exit = /\[exit\] (.*)\s*$/.exec(log.trim())?.[1];
-			if (exit !== '0') throw new Error(exit || t('store.failed'));
-			notify('appstore', title(a), t('store.installed_note', { name: title(a) }));
-			revalidate('apps', data.apps).catch(() => {});
-			window.dispatchEvent(new Event('zerodesk-apps-changed'));
-		} catch (e) {
-			if (!(e instanceof Cancelled)) error = `${title(a)}: ${(e as Error).message}`;
-		} finally {
-			delete store_state.tasks[a.id];
-			await load();
-		}
+	const get = (a: StoreApp) => enqueue(a, title(a));
+
+	function update_all() {
+		for (const a of updates) get(a);
 	}
 
-	async function update_all() {
-		for (const a of updates) await get(a);
-	}
+	// an install finished: refresh the catalogue (installed versions, updates)
+	onMount(() => {
+		const on_done = () => load();
+		window.addEventListener('zerodesk-store-changed', on_done);
+		return () => window.removeEventListener('zerodesk-store-changed', on_done);
+	});
 
 	function open(a: StoreApp) {
 		if (a.desktop_id) open_device_app({ id: a.desktop_id, name: title(a) });
@@ -233,7 +194,10 @@
 
 {#snippet button(a: StoreApp)}
 	{@const task = store_state.tasks[a.id]}
-	{#if task && task.phase !== 'auth'}
+	{#if task?.phase === 'queued'}
+		<!-- waiting for the install before it; a click takes it out of the queue -->
+		<button class="get queued" title={t('store.cancel_waiting')} onclick={(e) => (e.stopPropagation(), cancel_queued(a.id))}>{t('store.waiting')}</button>
+	{:else if task && task.phase !== 'auth'}
 		<!-- the Mac App Store's ring: it fills with the download and install;
 		     a short spinning arc only until the first progress arrives -->
 		<span class="ring" class:spin={task.phase === 'waiting'} title={t('store.installing')} style:--p={task.phase === 'waiting' ? 0.2 : task.pct}>
@@ -430,6 +394,16 @@
 		</div>
 	</section>
 </div>
+
+{#if store_state.alert}
+	<div class="alert-layer" role="presentation">
+		<div class="alert" role="alertdialog" aria-label={store_state.alert.title}>
+			<b>{store_state.alert.title}</b>
+			<p>{store_state.alert.message}</p>
+			<button class="alert-btn" onclick={() => (store_state.alert = null)}>{t('installer.ok')}</button>
+		</div>
+	</div>
+{/if}
 
 <style>
 	.store {
@@ -947,6 +921,70 @@
 	.err {
 		margin: 6px 0 10px;
 		color: var(--zd-red);
+	}
+
+	.get.queued {
+		font-weight: 500;
+		color: var(--zd-text-secondary);
+	}
+
+	/* a failed install: a macOS-style alert over the window, not a line that pushes the page down */
+	.alert-layer {
+		position: absolute;
+		inset: 0;
+		z-index: 40;
+		display: grid;
+		place-items: center;
+		padding: 16px;
+		background: hsla(0, 0%, 0%, 0.12);
+		animation: fade-in 160ms ease;
+	}
+
+	.alert {
+		width: min(260px, 100%);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 8px;
+		padding: 22px 18px 18px;
+		border-radius: 22px;
+		background: var(--zd-window-bg);
+		box-shadow:
+			0 0 0 0.5px var(--zd-hairline-strong),
+			0 20px 60px hsla(0, 0%, 0%, 0.3);
+		text-align: center;
+
+		b {
+			font-size: 13px;
+			font-weight: 700;
+			line-height: 1.35;
+			overflow-wrap: anywhere;
+		}
+
+		p {
+			margin: 0;
+			font-size: 11px;
+			line-height: 1.45;
+			color: var(--zd-text-secondary);
+			overflow-wrap: anywhere;
+		}
+	}
+
+	.alert-btn {
+		width: 100%;
+		height: 28px;
+		margin-top: 10px;
+		border-radius: 14px;
+		font-size: 13px;
+		font-weight: 500;
+		color: var(--system-color-primary-contrast);
+		background: var(--system-color-primary);
+	}
+
+	@keyframes fade-in {
+		from {
+			opacity: 0;
+		}
 	}
 
 	@keyframes spin {

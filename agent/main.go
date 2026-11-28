@@ -121,6 +121,7 @@ func main() {
 	mux.HandleFunc("POST /api/wifi/connect", s.auth(handleWifiConnect))
 	mux.HandleFunc("POST /api/wifi/disconnect", s.auth(handleWifiDisconnect))
 	mux.HandleFunc("POST /api/system/reboot", s.auth(handleReboot))
+	mux.HandleFunc("POST /api/zerodesk/power", s.auth(handleZeroDeskPower))
 	mux.HandleFunc("GET /api/zagent/settings", s.auth(handleZagentSettings))
 	mux.HandleFunc("GET /api/zagent/options", s.auth(handleZagentOptions))
 	mux.HandleFunc("POST /api/zagent/set", s.auth(handleZagentSet))

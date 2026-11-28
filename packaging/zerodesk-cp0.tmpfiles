@@ -1,0 +1,4 @@
+# /run/zerodesk-cp0: written by the launcher entry to start ZeroDesk
+# (zerodesk-cp0.path). postinst overrides the owner in
+# /etc/tmpfiles.d/zerodesk-cp0.conf when the device account is not 'pi'.
+d /run/zerodesk-cp0 0755 pi pi -
