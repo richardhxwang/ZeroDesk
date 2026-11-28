@@ -13,6 +13,7 @@ Developer notes. End-user documentation is in the [README](../README.md).
 | `examples/level/` | Example app with its own ZeroDesk window (docs/APP-SPEC.md) |
 | `vfb/` | `LD_PRELOAD` virtual framebuffer for running third-party device apps inside a window |
 | `design/icon-gen/` | Generated icon artwork; `ui/scripts/build-icons.py` turns it into `ui/public/icons/*.webp` |
+| `design/wallpaper-gen/` | Built-in wallpapers: `pnpm install && pnpm build` there writes `ui/public/wallpapers/<id>-light.svg` and `<id>-dark.svg` (fixed seeds, flat colour, no gradients). A new set also needs its id in `ui/src/lib/wallpapers.ts` and a `settings.wall_<id>` name in each language |
 | `docs/macos-reference.md` | Measured macOS 26/27 specs (window, sidebar, toolbar, lists). Follow it |
 | `docs/cardputer-settings.md` | Every device setting and the command or file behind it |
 | `docs/APP-SPEC.md` | Format for apps that ship a native ZeroDesk window |
@@ -29,6 +30,7 @@ Developer notes. End-user documentation is in the [README](../README.md).
 | Settings | `/api/settings`, `/api/wifi/*`, `/api/system/reboot` (see `docs/cardputer-settings.md`) |
 | Voice Memos | `/api/rec/*`, `/api/audio/peaks` |
 | Web apps | `/api/webapps/*` and `/x/<capability>/` (docs/APP-SPEC.md); backends as transient `zerodesk-app-<id>` user units |
+| Wallpaper | built-in pictures from the embedded UI; `/api/wallpaper` (the device's own Linux desktop wallpaper); `/api/wallpaper/custom` (GET/PUT/DELETE, the user's picture in `~/.local/share/zerodesk/wallpaper/custom`). The browser scales a picture to 2560 px on the long edge and sends WebP or JPEG, so the device never decodes images. Which wallpaper shows is a per-browser preference |
 | Piano | Splendid Grand Piano samples via `/api/piano/{name}` (fetched once by the device, cached in `~/.local/share/zerodesk/piano`) |
 
 ## Virtual screens: sharpness and input

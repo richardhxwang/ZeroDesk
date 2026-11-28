@@ -13,6 +13,7 @@
 	import FileGlyph from './FileGlyph.svelte';
 	import TrashView from './TrashView.svelte';
 	import QuickLook from './QuickLook.svelte';
+	import { fetch_device_file, IMAGE_EXT, use_as_wallpaper } from '🍎/lib/wallpapers.ts';
 
 	type Entry = { name: string; path: string; dir: boolean; size: number; modified: string; hidden?: boolean };
 
@@ -199,11 +200,20 @@
 		}
 	}
 
+	async function set_wallpaper(e: Entry) {
+		try {
+			await use_as_wallpaper(await fetch_device_file(e.path));
+		} catch (err) {
+			error = String((err as Error).message);
+		}
+	}
+
 	function row_menu(ev: MouseEvent, e: Entry) {
 		selected = e.path;
 		show_context_menu(ev, [
 			{ label: t('apps.open'), action: () => open(e) },
 			...(e.dir ? [] : [{ label: t('finder.quick_look'), action: () => (preview = e) }]),
+			...(!e.dir && IMAGE_EXT.test(e.name) ? [{ label: t('finder.set_wallpaper'), action: () => set_wallpaper(e) }] : []),
 			{ label: t('finder.rename'), action: () => start_rename(), break_after: true },
 			...(e.dir ? [] : [{ label: t('finder.download'), action: () => download(e), break_after: true }]),
 			{ label: t('apps.move_to_trash'), action: () => move_to_trash(e) },

@@ -7,11 +7,12 @@
 	import { api, post } from '🍎/lib/api.ts';
 	import { apps, settings_nav } from '🍎/state/apps.svelte.ts';
 	import { t, type MsgKey } from '🍎/state/i18n.svelte.ts';
-	import { LANGS, locale_of, preferences, WALLPAPER_TONES, type Appearance, type Lang, type WallpaperTone } from '🍎/state/preferences.svelte.ts';
+	import { LANGS, locale_of, preferences, type Appearance, type Lang } from '🍎/state/preferences.svelte.ts';
 	import { logout } from '🍎/state/session.svelte.ts';
 	import AppIcon from '../../SVG/AppIcon.svelte';
 	import Segmented from '../common/Segmented.svelte';
 	import TerminalPane from './TerminalPane.svelte';
+	import WallpaperPane from './WallpaperPane.svelte';
 
 	// System Settings, laid out like macOS: a floating sidebar (search, the
 	// device card, panes with colour tiles) and grouped inset cards on the
@@ -57,7 +58,6 @@
 		show_list = false;
 		settings_nav.pane = '';
 	});
-	const WALLPAPERS: ('device' | WallpaperTone)[] = ['device', ...(Object.keys(WALLPAPER_TONES) as WallpaperTone[])];
 	let query = $state('');
 	// last known state paints the window at once; a refresh follows (lib/swr)
 	let s = $state<State | null>(cached<State>('settings') ?? null);
@@ -368,19 +368,7 @@
 					</div>
 				</div>
 				{#if preferences.appearance === 'auto'}<p class="foot">{t('settings.auto_note')}</p>{/if}
-				<h2>{t('settings.wallpaper')}</h2>
-				<div class="walls">
-					{#each WALLPAPERS as w (w)}
-						<button class="wall" class:on={preferences.wallpaper === w} onclick={() => (preferences.wallpaper = w)}>
-							{#if w === 'device'}
-								<span class="chip device-wall" style:background-image="url(/api/wallpaper)"></span>
-							{:else}
-								<span class="chip" style:background={WALLPAPER_TONES[w][preferences.theme.scheme === 'dark' ? 1 : 0]}></span>
-							{/if}
-							<small>{w === 'device' ? t('settings.wallpaper_device') : t(`settings.tone_${w}` as MsgKey)}</small>
-						</button>
-					{/each}
-				</div>
+				<WallpaperPane />
 			{:else if pane === 'display'}
 				<div class="card">
 					<div class="row tall">
@@ -666,49 +654,6 @@
 		margin-right: 2px;
 		border-radius: 50%;
 		background: var(--zd-text-tertiary);
-	}
-
-	.walls {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
-		gap: 12px 8px;
-		padding: 4px 2px;
-	}
-
-	.wall {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 6px;
-		padding: 0;
-		min-width: 0;
-
-		.chip {
-			width: 100%;
-			aspect-ratio: 16 / 10;
-			border-radius: 8px;
-			background-size: cover;
-			background-position: center;
-			background-color: var(--zd-wallpaper);
-			box-shadow: inset 0 0 0 0.5px var(--zd-hairline-strong);
-			transition: box-shadow 180ms ease;
-		}
-
-		&.on .chip {
-			box-shadow:
-				0 0 0 2px var(--zd-window-bg),
-				0 0 0 4px var(--zd-text);
-		}
-
-		/* longer names (グラファイト) wrap rather than being cut off */
-		small {
-			max-width: 100%;
-			font-size: 11px;
-			line-height: 1.25;
-			text-align: center;
-			overflow-wrap: anywhere;
-			color: var(--zd-text-secondary);
-		}
 	}
 
 	.tile {

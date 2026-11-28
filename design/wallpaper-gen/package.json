@@ -1,0 +1,13 @@
+{
+	"name": "zerodesk-wallpaper-gen",
+	"private": true,
+	"type": "module",
+	"description": "Generates ZeroDesk's built-in wallpapers (SVG) into ui/public/wallpapers/.",
+	"scripts": {
+		"build": "node gen.mjs"
+	},
+	"devDependencies": {
+		"d3-contour": "4.0.2"
+	},
+	"packageManager": "pnpm@10.12.3"
+}
