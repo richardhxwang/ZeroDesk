@@ -148,7 +148,7 @@ ZeroDesk comes in two editions built from the same source:
 | Installing packages, setting the clock by hand, ADB | asks for your password each time | asks for your password, or runs directly if your device allows `sudo` without one |
 | Opening device apps that the launcher runs as administrator (from ZeroDesk's Apps) | open them from the device's launcher | ✓ when `sudo` works without a password |
 
-**From the CardputerZero Store:** open **Store** on the device, search for **ZeroDesk CP0** or its share code **ZDCP**, and install.
+**From the CardputerZero Store:** open **Store** on the device, search for **ZeroDesk for CP0** or its share code **ZDCP**, and install.
 
 **Upgrading from 0.2.8 or earlier:** the package used to be called `zerodesk` and is now `zerodesk-cp0` (another Store app has the name `zerodesk`). Install the new package as usual; it takes over from the old one and removes it a few seconds later, and your settings, signed-in browsers and app data stay. Reload the page if it loses the connection.
 
