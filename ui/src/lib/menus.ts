@@ -1,7 +1,7 @@
 import { apps_config } from '🍎/configs/apps/apps-config';
 import { apps, close_app, minimize_app, open_app, title_of } from '🍎/state/apps.svelte.ts';
 import { t } from '🍎/state/i18n.svelte.ts';
-import { preferences, toggle_lang, toggle_scheme } from '🍎/state/preferences.svelte.ts';
+import { LANGS, preferences, toggle_scheme } from '🍎/state/preferences.svelte.ts';
 import { power } from '🍎/state/power.svelte.ts';
 import { logout } from '🍎/state/session.svelte.ts';
 import { IS_MAC, terminal } from '🍎/state/terminal.svelte.ts';
@@ -12,7 +12,20 @@ export type MenuItem = {
 	disabled?: boolean;
 	shortcut?: string;
 	break_after?: boolean;
+	/** opens to the side on hover, like a macOS submenu */
+	submenu?: MenuItem[];
+	/** shows a check mark; a menu with any checked item keeps a column for it */
+	checked?: boolean;
 };
+
+/** Language ▸ each language named in itself, the current one checked. */
+export function language_menu(break_after = false): MenuItem {
+	return {
+		label: t('menu.language'),
+		break_after,
+		submenu: LANGS.map((l) => ({ label: l.label, checked: preferences.lang === l.value, action: () => (preferences.lang = l.value) })),
+	};
+}
 
 export type MenuDef = { id: string; title: string; items: MenuItem[]; emphasis?: boolean; logo?: boolean };
 
@@ -33,7 +46,7 @@ export function build_menus(): MenuDef[] {
 					label: preferences.theme.scheme === 'dark' ? t('menu.light') : t('menu.dark'),
 					action: toggle_scheme,
 				},
-				{ label: t('menu.lang'), action: toggle_lang, break_after: true },
+				language_menu(true),
 				{ label: t('menu.reload'), action: () => location.reload(), break_after: true },
 				{ label: t('menu.restart'), action: () => (power.ask = 'restart') },
 				{ label: t('menu.shutdown'), action: () => (power.ask = 'shutdown'), break_after: true },
