@@ -10,7 +10,7 @@
 
 	type Step = { kind: 'tool' | 'thinking'; name?: string; detail?: string; output?: string; text?: string };
 	type Approval = { id: string; tool: string; summary: string; answer?: string };
-	type Item = { role: 'user' | 'agent'; text: string; steps: Step[]; approvals: Approval[]; streaming?: boolean; error?: string };
+	type Item = { role: 'user' | 'agent'; text: string; steps: Step[]; approvals: Approval[]; streaming?: boolean; error?: string; done?: boolean };
 
 	let items = $state<Item[]>([]);
 	let draft = $state('');
@@ -62,7 +62,7 @@
 				break;
 			}
 			case 'approval_request': reply.approvals.push({ id: ev.request_id, tool: ev.tool ?? '', summary: ev.arguments_summary ?? '' }); break;
-			case 'done': if (ev.full_response) reply.text = ev.full_response; break;
+			case 'done': if (ev.full_response) reply.text = ev.full_response; reply.done = true; break;
 			case 'error': reply.error = ev.message ?? L('Failed', '失败'); break;
 			case 'aborted': reply.error = L('Interrupted', '已中断'); break;
 		}
@@ -86,17 +86,31 @@
 			const reader = res.body.getReader();
 			const decoder = new TextDecoder();
 			let buffer = '';
+			const take = (block: string) => {
+				const line = block.split('\n').find((l) => l.startsWith('data:'));
+				if (!line) return;
+				try {
+					handle(reply, JSON.parse(line.slice(5).trim()));
+				} catch {
+					return; // not JSON: skip it, keep the stream going
+				}
+				scroll_down();
+			};
 			for (;;) {
 				const { value, done } = await reader.read();
 				if (done) break;
-				buffer += decoder.decode(value, { stream: true });
+				buffer += decoder.decode(value, { stream: true }).replace(/\r\n?/g, '\n');
 				let cut;
 				while ((cut = buffer.indexOf('\n\n')) >= 0) {
-					const line = buffer.slice(0, cut).split('\n').find((l) => l.startsWith('data: '));
+					take(buffer.slice(0, cut));
 					buffer = buffer.slice(cut + 2);
-					if (line) { handle(reply, JSON.parse(line.slice(6))); scroll_down(); }
 				}
 			}
+			if (buffer.trim()) take(buffer); // a last event without its blank line
+			// Say what happened instead of showing half a reply as if it were all of it.
+			if (!reply.error && !reply.done) reply.error = L('The reply was cut off', '回复中断');
+			else if (!reply.error && !reply.text.trim() && !reply.steps.length && !reply.approvals.length)
+				reply.error = L('No reply came back (the model service failed)', '没有收到回复（模型服务出错）');
 		} catch (e) {
 			reply.error = (e as Error).name === 'AbortError' ? L('Interrupted', '已中断') : (e as Error).message;
 		} finally {
@@ -114,6 +128,13 @@
 		await fetch('/api/zagent/web/chat/approve', {
 			method: 'POST', headers, body: JSON.stringify({ relay, request_id: a.id, decision }),
 		}).catch(() => {});
+	}
+
+	/** What a reply still being written is doing now: thinking, or a tool. */
+	function status(item: Item): string {
+		const last = item.steps[item.steps.length - 1];
+		if (last && last.kind === 'tool' && last.output === undefined) return L(`Using ${last.name}`, `正在使用 ${last.name}`);
+		return L('Thinking', '思考中');
 	}
 
 	function keydown(e: KeyboardEvent) {
@@ -167,9 +188,10 @@
 						{/if}
 					{/each}
 					{#if item.text}
-						<div class="text" class:caret={item.streaming}>{item.text}</div>
-					{:else if item.streaming}
-						<span class="working"><i></i><i></i><i></i></span>
+						<div class="text">{item.text}</div>
+					{/if}
+					{#if item.streaming && (!item.text || item.steps[item.steps.length - 1]?.kind === 'tool' && item.steps[item.steps.length - 1]?.output === undefined)}
+						<span class="status">{status(item)}</span>
 					{/if}
 					{#if item.error}<div class="err">{item.error}</div>{/if}
 				</div>
@@ -179,7 +201,11 @@
 	<form class="composer" onsubmit={(e) => { e.preventDefault(); busy ? stop() : send(); }}>
 		<textarea rows="1" bind:value={draft} onkeydown={keydown} disabled={!available} placeholder={L('Message Zagent', '发消息给 Zagent')}></textarea>
 		<button class="send" type="submit" disabled={!available || (!busy && !draft.trim())} aria-label={busy ? L('Stop', '停止') : L('Send', '发送')}>
-			<i class="f7-icons">{busy ? 'stop_fill' : 'arrow_up'}</i>
+			{#if busy}
+				<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="2" fill="currentColor" /></svg>
+			{:else}
+				<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 13V3.5M3.8 7.4 8 3.2l4.2 4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+			{/if}
 		</button>
 	</form>
 </div>
@@ -198,16 +224,18 @@
 	}
 	.agent { font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
 	.text { white-space: pre-wrap; }
-	.caret::after {
-		content: ''; display: inline-block; width: 6px; height: 13px; margin-left: 3px; vertical-align: -2px;
-		background: var(--zd-text); border-radius: 1px; animation: blink 1s steps(2) infinite;
+	/* "Thinking" / "Using tool": a light sweeping across the words, like the
+	   status line of a chat app, until the reply starts */
+	.status {
+		display: inline-block; margin-top: 2px; font-size: 13px;
+		color: transparent;
+		background: linear-gradient(90deg, var(--zd-text-tertiary) 0%, var(--zd-text-tertiary) 35%, var(--zd-text) 50%, var(--zd-text-tertiary) 65%, var(--zd-text-tertiary) 100%);
+		background-size: 250% 100%;
+		-webkit-background-clip: text; background-clip: text;
+		animation: sweep 1.6s linear infinite;
 	}
-	@keyframes blink { 50% { opacity: 0; } }
-	.working { display: inline-flex; gap: 4px; padding: 4px 0; }
-	.working i { width: 6px; height: 6px; border-radius: 50%; background: var(--zd-text-tertiary); animation: breathe 1.2s ease-in-out infinite; }
-	.working i:nth-child(2) { animation-delay: 0.15s; }
-	.working i:nth-child(3) { animation-delay: 0.3s; }
-	@keyframes breathe { 0%, 100% { opacity: 0.3; transform: scale(0.85); } 50% { opacity: 1; transform: none; } }
+	@keyframes sweep { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+	@media (prefers-reduced-motion: reduce) { .status { animation: none; color: var(--zd-text-secondary); background: none; } }
 	.process { margin-bottom: 8px; }
 	.process summary {
 		list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
@@ -246,8 +274,10 @@
 	textarea:disabled { cursor: default; }
 	.send {
 		width: 28px; height: 28px; border-radius: 50%; border: 0; flex: none; cursor: pointer;
-		background: var(--zd-text); color: var(--zd-window-bg); display: grid; place-items: center; font-size: 13px;
+		background: var(--zd-text); color: var(--zd-window-bg); display: grid; place-items: center;
+		transition: background-color 0.14s ease, color 0.14s ease;
 	}
-	.send:disabled { opacity: 0.25; cursor: default; }
+	/* nothing to send: a quiet button that still reads as one */
+	.send:disabled { background: var(--zd-hover); color: var(--zd-text-tertiary); cursor: default; }
 	.f7-icons { font-style: normal; line-height: 1; }
 </style>
