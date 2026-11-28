@@ -7,8 +7,9 @@
 
 	let mode = $state<'pair' | 'token'>('pair');
 	let code = $state('');
-	let pair = $state<'starting' | 'waiting' | 'denied' | 'offline'>('starting');
+	let pair = $state<'starting' | 'waiting' | 'denied' | 'offline' | 'busy' | 'too_many' | 'cooldown'>('starting');
 	let pair_id = '';
+	let confirm = $state<'code' | 'ok'>('code');
 	let poll: ReturnType<typeof setTimeout> | undefined;
 	let alive = true;
 
@@ -18,17 +19,30 @@
 	let shake = $state(false);
 	let input_el = $state<HTMLInputElement>();
 
+	// Signed in before 0.5: the device set a notice when it turned the old
+	// sign-in away, so the page can say why connecting again is needed.
+	const upgraded = /(?:^|;\s*)zd_notice=upgraded(?:;|$)/.test(document.cookie);
+	const UPGRADE_NOTE = 'https://github.com/richardhxwang/ZeroDesk/blob/main/docs/notes/security-0.5.md';
+
 	async function start_pairing() {
 		clearTimeout(poll);
-		const res = await pair_start(preferences.lang);
+		const res = await pair_start(preferences.lang, pair_id);
 		if (!alive || mode !== 'pair') return;
 		if (!res) {
 			pair = 'offline';
 			poll = setTimeout(start_pairing, 3000);
 			return;
 		}
+		if ('refused' in res) {
+			// try again by itself once the device is free / the wait is over
+			code = '';
+			pair = res.refused;
+			poll = setTimeout(start_pairing, res.retryIn * 1000);
+			return;
+		}
 		pair_id = res.id;
 		code = res.code;
+		confirm = res.confirm === 'ok' ? 'ok' : 'code';
 		pair = 'waiting';
 		const check = async () => {
 			if (!alive || mode !== 'pair') return;
@@ -86,7 +100,7 @@
 		const res = await login(token.trim());
 		busy = false;
 		if (res === 'ok') return;
-		error = res === 'wrong' ? t('login.wrong') : t('login.offline');
+		error = res === 'wrong' ? t('login.wrong') : res === 'too_many' ? t('login.too_many') : t('login.offline');
 		shake = false;
 		requestAnimationFrame(() => (shake = true));
 		input_el?.select();
@@ -106,6 +120,12 @@
 	<div class="card" class:shake onanimationend={() => (shake = false)}>
 		<AppIcon id="device" size={84} />
 		<h1>{t('login.title')}</h1>
+		{#if upgraded}
+			<p class="notice">
+				<b>{t('login.upgraded_title')}</b><span>{t('login.upgraded')}</span>
+				<a href={UPGRADE_NOTE} target="_blank" rel="noopener noreferrer">{t('login.upgraded_more')}</a>
+			</p>
+		{/if}
 
 		{#if mode === 'pair'}
 			<div class="code" class:muted={pair !== 'waiting'} aria-live="polite">
@@ -118,6 +138,14 @@
 					{t('login.denied')}
 				{:else if pair === 'offline'}
 					{t('login.offline')}
+				{:else if pair === 'busy'}
+					{t('login.busy')}
+				{:else if pair === 'too_many'}
+					{t('login.too_many')}
+				{:else if pair === 'cooldown'}
+					{t('login.cooldown')}
+				{:else if confirm === 'ok'}
+					{t('login.check_ok')}
 				{:else}
 					{t('login.press_ok')}
 				{/if}
@@ -230,6 +258,32 @@
 		font-size: 22px;
 		font-weight: 600;
 		letter-spacing: -0.015em;
+	}
+
+	.notice {
+		max-width: 400px;
+		text-wrap: balance;
+		white-space: pre-line;
+		margin-top: 10px;
+		font-size: 13px;
+		line-height: 1.5;
+		text-align: center;
+		color: var(--zd-text-secondary);
+
+		b {
+			display: block;
+			margin-bottom: 2px;
+			font-weight: 600;
+			color: var(--zd-text);
+		}
+
+		a {
+			display: table;
+			margin: 6px auto 0;
+			color: var(--zd-text);
+			text-decoration: underline;
+			text-underline-offset: 2px;
+		}
 	}
 
 	.code {

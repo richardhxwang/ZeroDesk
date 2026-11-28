@@ -12,8 +12,12 @@ import (
 // Renders the device pairing prompt. With ZERODESK_PREVIEW_DIR set, the
 // result is also written as PNG (scaled 3x) for visual review.
 func TestRenderPrompt(t *testing.T) {
-	for _, lang := range []string{"zh", "en"} {
-		buf, err := renderPrompt(320, 170, "4821", lang)
+	for _, name := range []string{"zh", "en", "en_ok"} {
+		lang, show := name, ""
+		if name == "en_ok" { // pairing set to "press OK": the device shows the code
+			lang, show = "en", "4821"
+		}
+		buf, err := renderPrompt(320, 170, "48", 4, show, "192.168.1.23", lang)
 		if err != nil {
 			t.Fatalf("%s: %v", lang, err)
 		}
@@ -37,7 +41,7 @@ func TestRenderPrompt(t *testing.T) {
 				}
 			}
 		}
-		f, err := os.Create(filepath.Join(dir, "prompt_"+lang+".png"))
+		f, err := os.Create(filepath.Join(dir, "prompt_"+name+".png"))
 		if err != nil {
 			t.Fatal(err)
 		}

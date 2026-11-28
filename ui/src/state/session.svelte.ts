@@ -1,3 +1,5 @@
+import { t } from '🍎/state/i18n.svelte.ts';
+import { notify } from '🍎/state/notifications.svelte.ts';
 export type SysInfo = {
 	hostname: string;
 	os: string;
@@ -51,7 +53,11 @@ export async function check_session() {
 	} catch {
 		session.authed = false;
 	}
-	if (session.authed) start_polling();
+	if (session.authed) {
+		start_polling();
+		// signed in on the way to Zagent's page: go on there (fixed path)
+		if (new URLSearchParams(location.search).get('after') === 'zagent') location.replace('/api/zagent/handoff');
+	}
 }
 
 /** Battery / clock / memory in the menu bar. Slow polling: this runs on a 1 GHz device. */
@@ -63,7 +69,7 @@ export function start_polling() {
 	}, 10_000);
 }
 
-export async function login(token: string): Promise<'ok' | 'wrong' | 'offline'> {
+export async function login(token: string): Promise<'ok' | 'wrong' | 'offline' | 'too_many'> {
 	try {
 		const res = await fetch('/api/login', {
 			method: 'POST',
@@ -71,6 +77,7 @@ export async function login(token: string): Promise<'ok' | 'wrong' | 'offline'> 
 			body: JSON.stringify({ token }),
 		});
 		if (res.status === 401) return 'wrong';
+		if (res.status === 429) return 'too_many';
 		if (!res.ok) return 'offline';
 		await check_session();
 		return 'ok';
@@ -79,23 +86,42 @@ export async function login(token: string): Promise<'ok' | 'wrong' | 'offline'> 
 	}
 }
 
+/** Signs this browser out on the device. If the device could not record it,
+ *  the browser stays signed in and says so: the session would otherwise
+ *  come back after the device restarts. */
 export async function logout() {
+	let error = '';
 	try {
-		await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
-	} finally {
-		session.authed = false;
+		const res = await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
+		if (res.ok || res.status === 401) {
+			session.authed = false;
+			return;
+		}
+		error = (await res.json().catch(() => ({})))?.error || res.statusText;
+	} catch {
+		error = t('login.offline');
 	}
+	notify('settings', t('settings.logout_failed'), error);
 }
 
 export type PairState = 'waiting' | 'approved' | 'expired' | 'denied' | 'unavailable';
 
-export async function pair_start(lang: string): Promise<{ id: string; code: string; expiresIn: number } | null> {
+/** busy: another computer is waiting on the device; too_many: this one asked too often */
+export type PairStart = { id: string; code: string; expiresIn: number; confirm?: 'code' | 'ok' } | { refused: 'busy' | 'too_many' | 'cooldown'; retryIn: number };
+
+/** replace: this browser's own waiting request, which it may replace */
+export async function pair_start(lang: string, replace = ''): Promise<PairStart | null> {
 	try {
 		const res = await fetch('/api/pair/start', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ lang }),
+			body: JSON.stringify({ lang, replace }),
 		});
+		if (res.status === 409 || res.status === 429) {
+			const body = await res.json().catch(() => ({}));
+			const refused = res.status === 409 ? 'busy' : body.reason === 'cooldown' ? 'cooldown' : 'too_many';
+			return { refused, retryIn: Number(body.retryIn) || 30 };
+		}
 		return res.ok ? await res.json() : null;
 	} catch {
 		return null;

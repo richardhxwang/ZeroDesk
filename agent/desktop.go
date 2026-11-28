@@ -52,7 +52,17 @@ func findWallpaper() string {
 	return ""
 }
 
+// handleLogout ends this browser's session on the server, not just its cookie.
 func (s *server) handleLogout(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteStrictMode})
+	if c, err := r.Cookie(sessionCookie); err == nil && s.sessions != nil {
+		if err := s.sessions.revokeToken(c.Value); err != nil {
+			// not saved: the session would come back after a restart, so
+			// say so instead of pretending this browser is signed out
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not sign out: " + err.Error()})
+			return
+		}
+	}
+	clearCookie(w, sessionCookie)
+	clearCookie(w, legacyCookie)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
